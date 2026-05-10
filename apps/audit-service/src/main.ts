@@ -6,9 +6,7 @@ async function bootstrap() {
   const logger = new Logger('AuditService');
   const app = await NestFactory.create(AppModule);
 
-  app.useGlobalPipes(
-    new ValidationPipe({ whitelist: true, transform: true }),
-  );
+  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
   const port = process.env.PORT || 3008;
   await app.listen(port);

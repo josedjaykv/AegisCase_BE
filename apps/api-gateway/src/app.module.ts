@@ -6,10 +6,7 @@ import { AppService } from './app.service';
 import { HealthController } from './health/health.controller';
 
 @Module({
-  imports: [
-    ConfigModule.forRoot({ isGlobal: true }),
-    TerminusModule,
-  ],
+  imports: [ConfigModule.forRoot({ isGlobal: true }), TerminusModule],
   controllers: [AppController, HealthController],
   providers: [AppService],
 })
