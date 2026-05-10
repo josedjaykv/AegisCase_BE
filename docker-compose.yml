@@ -1,0 +1,304 @@
+version: '3.9'
+
+# ─── Networks ──────────────────────────────────────────────────────────────────
+networks:
+  aegiscase-net:
+    driver: bridge
+
+# ─── Volumes ───────────────────────────────────────────────────────────────────
+volumes:
+  postgres_data:
+  rabbitmq_data:
+
+# ─── Services ──────────────────────────────────────────────────────────────────
+services:
+
+  # ── Infrastructure ──────────────────────────────────────────────────────────
+
+  postgres:
+    image: postgres:16-alpine
+    container_name: aegiscase-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${DB_USER:-aegiscase}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      POSTGRES_DB: ${DB_NAME:-aegiscase}
+    ports:
+      - '${DB_PORT:-5432}:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+    networks:
+      - aegiscase-net
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U ${DB_USER:-aegiscase} -d ${DB_NAME:-aegiscase}']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3.13-management-alpine
+    container_name: aegiscase-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-aegiscase}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASSWORD:-aegiscase}
+      RABBITMQ_DEFAULT_VHOST: ${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '${RABBITMQ_PORT:-5672}:5672'
+      - '${RABBITMQ_MGMT_PORT:-15672}:15672'
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    networks:
+      - aegiscase-net
+    healthcheck:
+      test: ['CMD', 'rabbitmq-diagnostics', 'ping']
+      interval: 15s
+      timeout: 10s
+      retries: 5
+
+  # ── Microservices ────────────────────────────────────────────────────────────
+
+  api-gateway:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: api-gateway
+    container_name: aegiscase-api-gateway
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3000
+      JWT_SECRET: ${JWT_SECRET:-changeme-in-production}
+      CORS_ORIGIN: ${CORS_ORIGIN:-*}
+    ports:
+      - '3000:3000'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  auth-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: auth-service
+    container_name: aegiscase-auth-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3001
+      JWT_SECRET: ${JWT_SECRET:-changeme-in-production}
+      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
+      KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-aegiscase-backend}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
+    ports:
+      - '3001:3001'
+    networks:
+      - aegiscase-net
+
+  user-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: user-service
+    container_name: aegiscase-user-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3002
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: user_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3002:3002'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  case-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: case-service
+    container_name: aegiscase-case-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3003
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: case_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3003:3003'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  involved-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: involved-service
+    container_name: aegiscase-involved-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3004
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: involved_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3004:3004'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  evidence-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: evidence-service
+    container_name: aegiscase-evidence-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3005
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: evidence_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3005:3005'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  task-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: task-service
+    container_name: aegiscase-task-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3006
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: task_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3006:3006'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  media-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: media-service
+    container_name: aegiscase-media-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3007
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: media_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      AWS_REGION: ${AWS_REGION:-us-east-1}
+      AWS_S3_BUCKET: ${AWS_S3_BUCKET:-aegiscase-media}
+      AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
+      AWS_SECRET_ACCESS_KEY: ${AWS_SECRET_ACCESS_KEY:-}
+    ports:
+      - '3007:3007'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  audit-service:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+      args:
+        SERVICE: audit-service
+    container_name: aegiscase-audit-service
+    restart: unless-stopped
+    environment:
+      NODE_ENV: ${NODE_ENV:-development}
+      PORT: 3008
+      DB_HOST: postgres
+      DB_PORT: 5432
+      DB_USER: ${DB_USER:-aegiscase}
+      DB_PASSWORD: ${DB_PASSWORD:-aegiscase}
+      DB_NAME: ${DB_NAME:-aegiscase}
+      DB_SCHEMA: audit_db
+      RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+    ports:
+      - '3008:3008'
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - aegiscase-net

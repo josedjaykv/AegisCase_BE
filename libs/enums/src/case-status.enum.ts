@@ -1,0 +1,6 @@
+export enum CaseStatus {
+  OPEN = 'OPEN',
+  UNDER_INVESTIGATION = 'UNDER_INVESTIGATION',
+  PAUSED = 'PAUSED',
+  CLOSED = 'CLOSED',
+}

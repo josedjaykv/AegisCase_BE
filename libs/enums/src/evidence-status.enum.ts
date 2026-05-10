@@ -1,0 +1,6 @@
+export enum EvidenceStatus {
+  REGISTERED = 'REGISTERED',
+  IN_CUSTODY = 'IN_CUSTODY',
+  TRANSFERRED = 'TRANSFERRED',
+  ARCHIVED = 'ARCHIVED',
+}

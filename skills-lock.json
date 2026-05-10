@@ -1,0 +1,29 @@
+{
+  "version": 1,
+  "skills": {
+    "api-design-principles": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/backend-development/skills/api-design-principles/SKILL.md",
+      "computedHash": "3316239df2bdcb41e992857b8142e0239e6964564dd5d7224e470c2ab350a03c"
+    },
+    "microservices-patterns": {
+      "source": "wshobson/agents",
+      "sourceType": "github",
+      "skillPath": "plugins/backend-development/skills/microservices-patterns/SKILL.md",
+      "computedHash": "ad3f082b4d343294249d4407f1019d98004d659c5d1b4a1bd5feb5ee0378589e"
+    },
+    "nestjs-best-practices": {
+      "source": "kadajett/agent-nestjs-skills",
+      "sourceType": "github",
+      "skillPath": "SKILL.md",
+      "computedHash": "1b6f82e889d19d305e38e35594de08eca0242321f353cafa4cf5e61dd3aa1a73"
+    },
+    "rabbitmq-development": {
+      "source": "mindrally/skills",
+      "sourceType": "github",
+      "skillPath": "rabbitmq-development/SKILL.md",
+      "computedHash": "5696250d6eb09665ce24ee60d6528f0cd0492c7341a708d0ac2937c307b37a12"
+    }
+  }
+}

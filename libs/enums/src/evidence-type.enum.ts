@@ -1,0 +1,7 @@
+export enum EvidenceType {
+  PHYSICAL = 'PHYSICAL',
+  DIGITAL = 'DIGITAL',
+  DOCUMENTARY = 'DOCUMENTARY',
+  TESTIMONIAL = 'TESTIMONIAL',
+  OTHER = 'OTHER',
+}
