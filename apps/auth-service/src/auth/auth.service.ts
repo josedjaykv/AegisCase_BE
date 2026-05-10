@@ -38,7 +38,7 @@ export class AuthService {
       client_secret: this.clientSecret,
       username: dto.email,
       password: dto.password,
-      scope: 'openid profile email',
+      scope: 'openid',
     });
 
     try {

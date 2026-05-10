@@ -73,7 +73,37 @@
       "authorizationServicesEnabled": false,
       "fullScopeAllowed": true,
       "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
-      "optionalClientScopes": ["address", "phone", "offline_access"]
+      "optionalClientScopes": ["address", "phone", "offline_access"],
+      "protocolMappers": [
+        {
+          "name": "realm-roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-realm-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        },
+        {
+          "name": "email",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-usermodel-property-mapper",
+          "consentRequired": false,
+          "config": {
+            "userinfo.token.claim": "true",
+            "user.attribute": "email",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "email",
+            "jsonType.label": "String"
+          }
+        }
+      ]
     },
     {
       "id": "aegiscase-frontend-id",
@@ -148,31 +178,6 @@
       ],
       "realmRoles": ["ANALYST"],
       "attributes": {}
-    }
-  ],
-  "clientScopes": [
-    {
-      "id": "roles-scope",
-      "name": "roles",
-      "protocol": "openid-connect",
-      "attributes": { "include.in.token.scope": "false" },
-      "protocolMappers": [
-        {
-          "id": "realm-roles-mapper",
-          "name": "realm roles",
-          "protocol": "openid-connect",
-          "protocolMapper": "oidc-userinfo-oidc-usermodel-role-mapper",
-          "consentRequired": false,
-          "config": {
-            "multivalued": "true",
-            "userinfo.token.claim": "true",
-            "id.token.claim": "true",
-            "access.token.claim": "true",
-            "claim.name": "realm_access.roles",
-            "jsonType.label": "String"
-          }
-        }
-      ]
     }
   ],
   "browserSecurityHeaders": {
