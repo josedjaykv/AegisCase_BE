@@ -11,7 +11,7 @@ export class HealthController {
   @Public()
   @Get()
   @HealthCheck()
-  @ApiOperation({ summary: 'Health check' })
+  @ApiOperation({ summary: 'Auth service health check' })
   check() {
     return this.health.check([]);
   }

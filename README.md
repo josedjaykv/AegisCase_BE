@@ -24,8 +24,11 @@ backend/
 │   ├── events/     — RabbitMQ event interfaces and patterns
 │   └── database/   — TypeORM base entity and DatabaseModule
 ├── docker/
-│   ├── Dockerfile          — Multi-stage build for any service
-│   └── postgres/init.sql   — Schema initialization
+│   ├── Dockerfile                  — Multi-stage build for any service
+│   ├── keycloak/realm-export.json  — Pre-configured realm (auto-imported)
+│   └── postgres/init.sql           — Schema initialization
+├── postman/
+│   └── AegisCase.postman_collection.json
 ├── docker-compose.yml
 ├── .env.example
 └── nest-cli.json
@@ -52,12 +55,17 @@ cp .env.example .env
 # Edit .env with your values (defaults work for local development)
 ```
 
-### 3. Start infrastructure (PostgreSQL + RabbitMQ)
+### 3. Start infrastructure (PostgreSQL + RabbitMQ + Keycloak)
 
 ```bash
-docker-compose up postgres rabbitmq -d
-docker-compose ps
+# Start all infrastructure services
+docker-compose up postgres rabbitmq keycloak -d
+
+# Wait ~60s for Keycloak to finish importing the realm
+docker-compose logs -f keycloak | grep -m 1 "Listening on"
 ```
+
+Keycloak auto-imports the realm from `docker/keycloak/realm-export.json` on first start.
 
 ### 4. Run services locally
 
@@ -89,8 +97,56 @@ docker-compose up --build
 | Media Service    | http://localhost:3007          | File uploads         |
 | Audit Service    | http://localhost:3008          | Audit logs           |
 | RabbitMQ UI      | http://localhost:15672         | Message broker admin |
+| Keycloak Admin   | http://localhost:8080          | Identity provider    |
 
-Default RabbitMQ credentials: `aegiscase` / `aegiscase`
+Default credentials:
+- **RabbitMQ:** `aegiscase` / `aegiscase`
+- **Keycloak admin console:** `admin` / `admin`
+
+## Keycloak Setup
+
+The realm is auto-imported from `docker/keycloak/realm-export.json`. No manual steps needed.
+
+**Realm:** `aegiscase` · **Admin console:** http://localhost:8080/admin
+
+### Test Users
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@aegiscase.com | Admin1234! | ADMIN |
+| detective@aegiscase.com | Detective1234! | DETECTIVE |
+| analyst@aegiscase.com | Analyst1234! | ANALYST |
+
+### Clients
+
+| Client ID | Type | Purpose |
+|-----------|------|---------|
+| `aegiscase-backend` | Confidential | Service-to-service (ROPC flow) |
+| `aegiscase-frontend` | Public | SPA OAuth2 code flow |
+
+### Auth Endpoints (via API Gateway)
+
+```
+POST /auth/login      — Exchange credentials for tokens
+POST /auth/refresh    — Refresh access token
+POST /auth/logout     — Revoke refresh token
+GET  /auth/me         — Current user from token (requires Bearer)
+POST /auth/validate   — Validate token (requires Bearer)
+```
+
+### Permission Matrix
+
+| Action | ADMIN | DETECTIVE | ANALYST |
+|--------|:-----:|:---------:|:-------:|
+| Create/delete cases | ✓ | Create only | ✗ |
+| Create/delete evidence | ✓ | Create only | ✗ |
+| Create/assign tasks | ✓ | ✓ | ✗ |
+| Update own tasks | ✓ | ✓ | ✓ |
+| Manage users | ✓ | ✗ | ✗ |
+| Archive cases/evidence | ✓ | ✗ | ✗ |
+| Reopen closed cases | ✓ | ✗ | ✗ |
+| Query audit logs | ✓ | ✗ | ✗ |
+| Query all entities | ✓ | ✓ | ✓ |
 
 ## Tech Stack
 
@@ -108,7 +164,7 @@ Default RabbitMQ credentials: `aegiscase` / `aegiscase`
 | Phase | Status | Description |
 |-------|--------|-------------|
 | 1 — Base Infrastructure | **Done** | Monorepo, scaffolding, Docker |
-| 2 — Security | Pending | Keycloak, JWT, Guards |
+| 2 — Security | **Done** | Keycloak, JWT, Guards, Postman |
 | 3 — Core Services | Pending | Business logic per service |
 | 4 — Events | Pending | RabbitMQ publishers/consumers |
 | 5 — Audit | Pending | Traceability |

@@ -1,0 +1,330 @@
+{
+  "info": {
+    "_postman_id": "aegiscase-phase2-auth",
+    "name": "AegisCase — Phase 2 Auth",
+    "description": "Authentication and authorization testing for AegisCase backend.\n\nTest users:\n- admin@aegiscase.com / Admin1234! → ADMIN role\n- detective@aegiscase.com / Detective1234! → DETECTIVE role\n- analyst@aegiscase.com / Analyst1234! → ANALYST role\n\nAfter login, copy `access_token` into the `{{access_token}}` variable.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "gateway_url", "value": "http://localhost:3000", "type": "string" },
+    { "key": "auth_url",    "value": "http://localhost:3001", "type": "string" },
+    { "key": "access_token",  "value": "", "type": "string" },
+    { "key": "refresh_token", "value": "", "type": "string" }
+  ],
+  "item": [
+    {
+      "name": "Auth",
+      "item": [
+        {
+          "name": "Login — ADMIN",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "  pm.test('Login successful', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "  pm.test('Refresh token present', () => pm.expect(body.refresh_token).to.be.a('string'));",
+                  "  pm.test('Token type is Bearer', () => pm.expect(body.token_type).to.eql('Bearer'));",
+                  "} else {",
+                  "  pm.test('Login failed', () => pm.expect(pm.response.code).to.eql(200));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@aegiscase.com\",\n  \"password\": \"Admin1234!\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "200 — Tokens issued",
+              "status": "OK",
+              "code": 200,
+              "body": "{\n  \"access_token\": \"eyJhbGciOiJSUzI1NiIsInR...\",\n  \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 300,\n  \"refresh_expires_in\": 1800\n}"
+            }
+          ]
+        },
+        {
+          "name": "Login — DETECTIVE",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Detective login OK', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"detective@aegiscase.com\",\n  \"password\": \"Detective1234!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login — ANALYST",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Analyst login OK', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"analyst@aegiscase.com\",\n  \"password\": \"Analyst1234!\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Login — Invalid credentials (expect 401)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invalid credentials returns 401', () => pm.expect(pm.response.code).to.eql(401));",
+                  "pm.test('Error message present', () => {",
+                  "  const body = pm.response.json();",
+                  "  pm.expect(body.message).to.be.a('string');",
+                  "});"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"admin@aegiscase.com\",\n  \"password\": \"WrongPassword!\"\n}"
+            }
+          },
+          "response": [
+            {
+              "name": "401 — Invalid credentials",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid credentials\",\n  \"timestamp\": \"2026-05-10T00:00:00.000Z\",\n  \"path\": \"/auth/login\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Get current user (me)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Returns user payload', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('Has sub', () => pm.expect(body.sub).to.be.a('string'));",
+                  "pm.test('Has role', () => pm.expect(body.role).to.be.oneOf(['ADMIN', 'DETECTIVE', 'ANALYST']));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+          }
+        },
+        {
+          "name": "Validate token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Token is valid', () => pm.expect(pm.response.code).to.eql(200));",
+                  "const body = pm.response.json();",
+                  "pm.test('valid = true', () => pm.expect(body.valid).to.eql(true));",
+                  "pm.test('User object present', () => pm.expect(body.user).to.be.an('object'));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
+            "url": { "raw": "{{gateway_url}}/auth/validate", "host": ["{{gateway_url}}"], "path": ["auth", "validate"] }
+          }
+        },
+        {
+          "name": "Refresh token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Refresh successful', () => pm.expect(pm.response.code).to.eql(200));",
+                  "if (pm.response.code === 200) {",
+                  "  const body = pm.response.json();",
+                  "  pm.collectionVariables.set('access_token', body.access_token);",
+                  "  pm.collectionVariables.set('refresh_token', body.refresh_token);",
+                  "  pm.test('New access_token issued', () => pm.expect(body.access_token).to.be.a('string'));",
+                  "}"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/refresh", "host": ["{{gateway_url}}"], "path": ["auth", "refresh"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Logout returns 204', () => pm.expect(pm.response.code).to.eql(204));",
+                  "pm.collectionVariables.set('access_token', '');",
+                  "pm.collectionVariables.set('refresh_token', '');"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }],
+            "url": { "raw": "{{gateway_url}}/auth/logout", "host": ["{{gateway_url}}"], "path": ["auth", "logout"] },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Authorization — Role checks",
+      "item": [
+        {
+          "name": "No token — expect 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Protected route returns 401 without token', () => pm.expect(pm.response.code).to.eql(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+          },
+          "response": [
+            {
+              "name": "401 — No token",
+              "status": "Unauthorized",
+              "code": 401,
+              "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\",\n  \"timestamp\": \"2026-05-10T00:00:00.000Z\",\n  \"path\": \"/auth/me\"\n}"
+            }
+          ]
+        },
+        {
+          "name": "Invalid token — expect 401",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Invalid token returns 401', () => pm.expect(pm.response.code).to.eql(401));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "header": [{ "key": "Authorization", "value": "Bearer invalid.token.here" }],
+            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+          }
+        }
+      ]
+    },
+    {
+      "name": "Health",
+      "item": [
+        {
+          "name": "Gateway health",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Gateway is up', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{gateway_url}}/health", "host": ["{{gateway_url}}"], "path": ["health"] }
+          }
+        },
+        {
+          "name": "Auth service health (direct)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "pm.test('Auth service is up', () => pm.expect(pm.response.code).to.eql(200));"
+                ]
+              }
+            }
+          ],
+          "request": {
+            "method": "GET",
+            "url": { "raw": "{{auth_url}}/health", "host": ["{{auth_url}}"], "path": ["health"] }
+          }
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,191 @@
+{
+  "id": "aegiscase",
+  "realm": "aegiscase",
+  "displayName": "AegisCase",
+  "displayNameHtml": "<strong>AegisCase</strong>",
+  "enabled": true,
+  "sslRequired": "external",
+  "registrationAllowed": false,
+  "loginWithEmailAllowed": true,
+  "duplicateEmailsAllowed": false,
+  "resetPasswordAllowed": true,
+  "editUsernameAllowed": false,
+  "bruteForceProtected": true,
+  "permanentLockout": false,
+  "maxFailureWaitSeconds": 900,
+  "minimumQuickLoginWaitSeconds": 60,
+  "waitIncrementSeconds": 60,
+  "quickLoginCheckMilliSeconds": 1000,
+  "maxDeltaTimeSeconds": 43200,
+  "failureFactor": 30,
+  "accessTokenLifespan": 300,
+  "accessTokenLifespanForImplicitFlow": 900,
+  "ssoSessionIdleTimeout": 1800,
+  "ssoSessionMaxLifespan": 36000,
+  "offlineSessionIdleTimeout": 2592000,
+  "accessCodeLifespan": 60,
+  "accessCodeLifespanUserAction": 300,
+  "accessCodeLifespanLogin": 1800,
+  "defaultSignatureAlgorithm": "RS256",
+  "roles": {
+    "realm": [
+      {
+        "id": "role-admin",
+        "name": "ADMIN",
+        "description": "System Administrator — full access",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "aegiscase"
+      },
+      {
+        "id": "role-detective",
+        "name": "DETECTIVE",
+        "description": "Detective — operational investigation management",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "aegiscase"
+      },
+      {
+        "id": "role-analyst",
+        "name": "ANALYST",
+        "description": "Analyst — investigation support activities",
+        "composite": false,
+        "clientRole": false,
+        "containerId": "aegiscase"
+      }
+    ]
+  },
+  "clients": [
+    {
+      "id": "aegiscase-backend-id",
+      "clientId": "aegiscase-backend",
+      "name": "AegisCase Backend",
+      "description": "Backend microservices client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "secret": "aegiscase-backend-secret",
+      "protocol": "openid-connect",
+      "publicClient": false,
+      "standardFlowEnabled": false,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": true,
+      "serviceAccountsEnabled": true,
+      "authorizationServicesEnabled": false,
+      "fullScopeAllowed": true,
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access"]
+    },
+    {
+      "id": "aegiscase-frontend-id",
+      "clientId": "aegiscase-frontend",
+      "name": "AegisCase Frontend",
+      "description": "Frontend SPA client",
+      "enabled": true,
+      "clientAuthenticatorType": "client-secret",
+      "protocol": "openid-connect",
+      "publicClient": true,
+      "standardFlowEnabled": true,
+      "implicitFlowEnabled": false,
+      "directAccessGrantsEnabled": false,
+      "serviceAccountsEnabled": false,
+      "redirectUris": ["http://localhost:4200/*", "http://localhost:3000/*"],
+      "webOrigins": ["http://localhost:4200", "http://localhost:3000"],
+      "defaultClientScopes": ["web-origins", "profile", "roles", "email"],
+      "optionalClientScopes": ["address", "phone", "offline_access"]
+    }
+  ],
+  "users": [
+    {
+      "id": "user-admin-id",
+      "username": "admin@aegiscase.com",
+      "email": "admin@aegiscase.com",
+      "firstName": "Admin",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Admin1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ADMIN"],
+      "attributes": {}
+    },
+    {
+      "id": "user-detective-id",
+      "username": "detective@aegiscase.com",
+      "email": "detective@aegiscase.com",
+      "firstName": "Detective",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Detective1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["DETECTIVE"],
+      "attributes": {}
+    },
+    {
+      "id": "user-analyst-id",
+      "username": "analyst@aegiscase.com",
+      "email": "analyst@aegiscase.com",
+      "firstName": "Analyst",
+      "lastName": "User",
+      "enabled": true,
+      "emailVerified": true,
+      "credentials": [
+        {
+          "type": "password",
+          "value": "Analyst1234!",
+          "temporary": false
+        }
+      ],
+      "realmRoles": ["ANALYST"],
+      "attributes": {}
+    }
+  ],
+  "clientScopes": [
+    {
+      "id": "roles-scope",
+      "name": "roles",
+      "protocol": "openid-connect",
+      "attributes": { "include.in.token.scope": "false" },
+      "protocolMappers": [
+        {
+          "id": "realm-roles-mapper",
+          "name": "realm roles",
+          "protocol": "openid-connect",
+          "protocolMapper": "oidc-userinfo-oidc-usermodel-role-mapper",
+          "consentRequired": false,
+          "config": {
+            "multivalued": "true",
+            "userinfo.token.claim": "true",
+            "id.token.claim": "true",
+            "access.token.claim": "true",
+            "claim.name": "realm_access.roles",
+            "jsonType.label": "String"
+          }
+        }
+      ]
+    }
+  ],
+  "browserSecurityHeaders": {
+    "contentSecurityPolicyReportOnly": "",
+    "xContentTypeOptions": "nosniff",
+    "xRobotsTag": "none",
+    "xFrameOptions": "SAMEORIGIN",
+    "contentSecurityPolicy": "frame-src 'self'; frame-ancestors 'self'; object-src 'none';",
+    "xXSSProtection": "1; mode=block",
+    "strictTransportSecurity": "max-age=31536000; includeSubDomains"
+  },
+  "smtpServer": {},
+  "eventsEnabled": false,
+  "adminEventsEnabled": false,
+  "adminEventsDetailsEnabled": false
+}
