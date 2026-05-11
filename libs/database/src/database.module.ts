@@ -17,7 +17,7 @@ export class DatabaseModule {
             password: config.get('DB_PASSWORD', 'aegiscase'),
             database: config.get('DB_NAME', 'aegiscase'),
             schema,
-            entities: [__dirname + '/../**/*.entity{.ts,.js}'],
+            autoLoadEntities: true,
             synchronize: config.get('NODE_ENV') !== 'production',
             logging: config.get('DB_LOGGING', 'false') === 'true',
             ssl: config.get('DB_SSL', 'false') === 'true' ? { rejectUnauthorized: false } : false,

@@ -1,22 +1,38 @@
 {
   "info": {
     "_postman_id": "aegiscase-phase2-auth",
-    "name": "AegisCase — Phase 2 Auth",
-    "description": "Authentication and authorization testing for AegisCase backend.\n\nTest users:\n- admin@aegiscase.com / Admin1234! → ADMIN role\n- detective@aegiscase.com / Detective1234! → DETECTIVE role\n- analyst@aegiscase.com / Analyst1234! → ANALYST role\n\nAfter login, copy `access_token` into the `{{access_token}}` variable.",
+    "name": "AegisCase \u2014 Phase 2 Auth",
+    "description": "Authentication and authorization testing for AegisCase backend.\n\nTest users:\n- admin@aegiscase.com / Admin1234! \u2192 ADMIN role\n- detective@aegiscase.com / Detective1234! \u2192 DETECTIVE role\n- analyst@aegiscase.com / Analyst1234! \u2192 ANALYST role\n\nAfter login, copy `access_token` into the `{{access_token}}` variable.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "gateway_url", "value": "http://localhost:3000", "type": "string" },
-    { "key": "auth_url",    "value": "http://localhost:3001", "type": "string" },
-    { "key": "access_token",  "value": "", "type": "string" },
-    { "key": "refresh_token", "value": "", "type": "string" }
+    {
+      "key": "gateway_url",
+      "value": "http://localhost:3000",
+      "type": "string"
+    },
+    {
+      "key": "auth_url",
+      "value": "http://localhost:3001",
+      "type": "string"
+    },
+    {
+      "key": "access_token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refresh_token",
+      "value": "",
+      "type": "string"
+    }
   ],
   "item": [
     {
       "name": "Auth",
       "item": [
         {
-          "name": "Login — ADMIN",
+          "name": "Login \u2014 ADMIN",
           "event": [
             {
               "listen": "test",
@@ -38,8 +54,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/login",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"admin@aegiscase.com\",\n  \"password\": \"Admin1234!\"\n}"
@@ -47,7 +77,7 @@
           },
           "response": [
             {
-              "name": "200 — Tokens issued",
+              "name": "200 \u2014 Tokens issued",
               "status": "OK",
               "code": 200,
               "body": "{\n  \"access_token\": \"eyJhbGciOiJSUzI1NiIsInR...\",\n  \"refresh_token\": \"eyJhbGciOiJIUzI1NiIsInR...\",\n  \"token_type\": \"Bearer\",\n  \"expires_in\": 300,\n  \"refresh_expires_in\": 1800\n}"
@@ -55,7 +85,7 @@
           ]
         },
         {
-          "name": "Login — DETECTIVE",
+          "name": "Login \u2014 DETECTIVE",
           "event": [
             {
               "listen": "test",
@@ -73,8 +103,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/login",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"detective@aegiscase.com\",\n  \"password\": \"Detective1234!\"\n}"
@@ -82,7 +126,7 @@
           }
         },
         {
-          "name": "Login — ANALYST",
+          "name": "Login \u2014 ANALYST",
           "event": [
             {
               "listen": "test",
@@ -100,8 +144,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/login",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"analyst@aegiscase.com\",\n  \"password\": \"Analyst1234!\"\n}"
@@ -109,7 +167,7 @@
           }
         },
         {
-          "name": "Login — Invalid credentials (expect 401)",
+          "name": "Login \u2014 Invalid credentials (expect 401)",
           "event": [
             {
               "listen": "test",
@@ -126,8 +184,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/login", "host": ["{{gateway_url}}"], "path": ["auth", "login"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/login",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "login"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"email\": \"admin@aegiscase.com\",\n  \"password\": \"WrongPassword!\"\n}"
@@ -135,7 +207,7 @@
           },
           "response": [
             {
-              "name": "401 — Invalid credentials",
+              "name": "401 \u2014 Invalid credentials",
               "status": "Unauthorized",
               "code": 401,
               "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Invalid credentials\",\n  \"timestamp\": \"2026-05-10T00:00:00.000Z\",\n  \"path\": \"/auth/login\"\n}"
@@ -159,8 +231,22 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/me",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
           }
         },
         {
@@ -180,8 +266,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Authorization", "value": "Bearer {{access_token}}" }],
-            "url": { "raw": "{{gateway_url}}/auth/validate", "host": ["{{gateway_url}}"], "path": ["auth", "validate"] }
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/validate",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "validate"
+              ]
+            }
           }
         },
         {
@@ -204,8 +304,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/refresh", "host": ["{{gateway_url}}"], "path": ["auth", "refresh"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/refresh",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "refresh"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
@@ -228,8 +342,22 @@
           ],
           "request": {
             "method": "POST",
-            "header": [{ "key": "Content-Type", "value": "application/json" }],
-            "url": { "raw": "{{gateway_url}}/auth/logout", "host": ["{{gateway_url}}"], "path": ["auth", "logout"] },
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/logout",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "logout"
+              ]
+            },
             "body": {
               "mode": "raw",
               "raw": "{\n  \"refresh_token\": \"{{refresh_token}}\"\n}"
@@ -239,10 +367,10 @@
       ]
     },
     {
-      "name": "Authorization — Role checks",
+      "name": "Authorization \u2014 Role checks",
       "item": [
         {
-          "name": "No token — expect 401",
+          "name": "No token \u2014 expect 401",
           "event": [
             {
               "listen": "test",
@@ -256,11 +384,20 @@
           "request": {
             "method": "GET",
             "header": [],
-            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+            "url": {
+              "raw": "{{gateway_url}}/auth/me",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
           },
           "response": [
             {
-              "name": "401 — No token",
+              "name": "401 \u2014 No token",
               "status": "Unauthorized",
               "code": 401,
               "body": "{\n  \"statusCode\": 401,\n  \"message\": \"Unauthorized\",\n  \"timestamp\": \"2026-05-10T00:00:00.000Z\",\n  \"path\": \"/auth/me\"\n}"
@@ -268,7 +405,7 @@
           ]
         },
         {
-          "name": "Invalid token — expect 401",
+          "name": "Invalid token \u2014 expect 401",
           "event": [
             {
               "listen": "test",
@@ -281,8 +418,22 @@
           ],
           "request": {
             "method": "GET",
-            "header": [{ "key": "Authorization", "value": "Bearer invalid.token.here" }],
-            "url": { "raw": "{{gateway_url}}/auth/me", "host": ["{{gateway_url}}"], "path": ["auth", "me"] }
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer invalid.token.here"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/auth/me",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "auth",
+                "me"
+              ]
+            }
           }
         }
       ]
@@ -304,7 +455,15 @@
           ],
           "request": {
             "method": "GET",
-            "url": { "raw": "{{gateway_url}}/health", "host": ["{{gateway_url}}"], "path": ["health"] }
+            "url": {
+              "raw": "{{gateway_url}}/health",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
           }
         },
         {
@@ -321,8 +480,1138 @@
           ],
           "request": {
             "method": "GET",
-            "url": { "raw": "{{auth_url}}/health", "host": ["{{auth_url}}"], "path": ["health"] }
+            "url": {
+              "raw": "{{auth_url}}/health",
+              "host": [
+                "{{auth_url}}"
+              ],
+              "path": [
+                "health"
+              ]
+            }
           }
+        }
+      ]
+    },
+    {
+      "name": "Users",
+      "item": [
+        {
+          "name": "Create User (ADMIN)",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/users",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"keycloakUserId\": \"kc-new-user-id\",\n  \"firstNames\": \"John\",\n  \"lastNames\": \"Doe\",\n  \"document\": \"DOC-001\",\n  \"role\": \"DETECTIVE\",\n  \"jobTitle\": \"Field Detective\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users (ADMIN)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/users",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/users/USER_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "users",
+                "USER_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update User (ADMIN)",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/users/USER_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "users",
+                "USER_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"jobTitle\": \"Senior Detective\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Users \u2014 ANALYST (403)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/users",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "users"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Cases",
+      "item": [
+        {
+          "name": "Create Case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Operation Nightfall\",\n  \"description\": \"Investigating unauthorized access\",\n  \"priority\": \"HIGH\",\n  \"leaderUserId\": \"00000000-0000-0000-0000-000000000001\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Cases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Case by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Case",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Operation Nightfall \\u2014 Updated\",\n  \"priority\": \"CRITICAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Case Status",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE/status",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"UNDER_INVESTIGATION\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Case (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE/archive",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE",
+                "archive"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Add Team Member",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE/team",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE",
+                "team"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"00000000-0000-0000-0000-000000000002\",\n  \"teamRole\": \"MEMBER\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Case Team",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/cases/CASE_ID_HERE/team",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "cases",
+                "CASE_ID_HERE",
+                "team"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Involved Persons",
+      "item": [
+        {
+          "name": "Create Involved Person",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstNames\": \"Jane\",\n  \"lastNames\": \"Smith\",\n  \"document\": \"DOC-IP-001\",\n  \"observations\": \"Witness to the incident\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Create Person \u2014 first_names only",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstNames\": \"Unknown\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Involved Persons",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Person by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons/PERSON_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons",
+                "PERSON_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Person",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons/PERSON_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons",
+                "PERSON_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"observations\": \"Updated observations\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Link to Case",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons/PERSON_ID_HERE/cases/CASE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons",
+                "PERSON_ID_HERE",
+                "cases",
+                "CASE_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"involvementType\": \"WITNESS\",\n  \"observations\": \"Saw the suspect leave the building\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Person Cases",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/involved-persons/PERSON_ID_HERE/cases",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "involved-persons",
+                "PERSON_ID_HERE",
+                "cases"
+              ]
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Tasks",
+      "item": [
+        {
+          "name": "Create Task",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caseId\": \"00000000-0000-0000-0000-000000000001\",\n  \"title\": \"Interview witness Jane Smith\",\n  \"description\": \"Conduct formal interview\",\n  \"priority\": \"HIGH\",\n  \"assignedToUserId\": \"00000000-0000-0000-0000-000000000002\",\n  \"dueDate\": \"2026-06-01\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get My Tasks",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks?assignedToUserId=USER_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks?assignedToUserId=USER_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Task by ID",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks/TASK_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks",
+                "TASK_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Task",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks/TASK_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks",
+                "TASK_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description\",\n  \"priority\": \"CRITICAL\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Task Status \u2014 IN_PROGRESS",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks/TASK_ID_HERE/status",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks",
+                "TASK_ID_HERE",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"IN_PROGRESS\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Change Task Status \u2014 COMPLETED",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks/TASK_ID_HERE/status",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks",
+                "TASK_ID_HERE",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"COMPLETED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel Task (ADMIN/DETECTIVE)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/tasks/TASK_ID_HERE/status",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "tasks",
+                "TASK_ID_HERE",
+                "status"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"CANCELLED\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Evidence",
+      "item": [
+        {
+          "name": "Register Evidence",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"caseId\": \"00000000-0000-0000-0000-000000000001\",\n  \"evidenceType\": \"DIGITAL\",\n  \"description\": \"Laptop seized from suspect office\",\n  \"currentCustodianId\": \"00000000-0000-0000-0000-000000000002\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Evidence",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Evidence by Case",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence?caseId=CASE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence?caseId=CASE_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Evidence by ID (creates custody record)",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence/EVIDENCE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence",
+                "EVIDENCE_ID_HERE"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Update Evidence",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence/EVIDENCE_ID_HERE",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence",
+                "EVIDENCE_ID_HERE"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"description\": \"Updated description\",\n  \"evidenceStatus\": \"IN_CUSTODY\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Transfer Custody",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              },
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence/EVIDENCE_ID_HERE/transfer-custody",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence",
+                "EVIDENCE_ID_HERE",
+                "transfer-custody"
+              ]
+            },
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"newCustodianId\": \"00000000-0000-0000-0000-000000000003\",\n  \"transferReason\": \"Transferred to forensics lab\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Get Chain of Custody",
+          "request": {
+            "method": "GET",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence/EVIDENCE_ID_HERE/chain-of-custody",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence",
+                "EVIDENCE_ID_HERE",
+                "chain-of-custody"
+              ]
+            }
+          },
+          "response": []
+        },
+        {
+          "name": "Archive Evidence (ADMIN)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Authorization",
+                "value": "Bearer {{access_token}}",
+                "type": "text"
+              }
+            ],
+            "url": {
+              "raw": "{{gateway_url}}/evidence/EVIDENCE_ID_HERE/archive",
+              "host": [
+                "{{gateway_url}}"
+              ],
+              "path": [
+                "evidence",
+                "EVIDENCE_ID_HERE",
+                "archive"
+              ]
+            }
+          },
+          "response": []
         }
       ]
     }

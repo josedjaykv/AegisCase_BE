@@ -126,7 +126,7 @@
   ],
   "users": [
     {
-      "id": "user-admin-id",
+      "id": "a0000000-0000-4000-8000-000000000001",
       "username": "admin@aegiscase.com",
       "email": "admin@aegiscase.com",
       "firstName": "Admin",
@@ -144,7 +144,7 @@
       "attributes": {}
     },
     {
-      "id": "user-detective-id",
+      "id": "a0000000-0000-4000-8000-000000000002",
       "username": "detective@aegiscase.com",
       "email": "detective@aegiscase.com",
       "firstName": "Detective",
@@ -162,7 +162,7 @@
       "attributes": {}
     },
     {
-      "id": "user-analyst-id",
+      "id": "a0000000-0000-4000-8000-000000000003",
       "username": "analyst@aegiscase.com",
       "email": "analyst@aegiscase.com",
       "firstName": "Analyst",
