@@ -61,9 +61,9 @@ export class ServiceProxyController {
       const hasBody = ['post', 'put', 'patch'].includes(method);
       let obs: Observable<AxiosResponse>;
       if (hasBody) {
-        obs = this.http.request({ method, url, data: req.body, headers, params: req.query });
+        obs = this.http.request({ method, url, data: req.body, headers });
       } else {
-        obs = this.http.request({ method, url, headers, params: req.query });
+        obs = this.http.request({ method, url, headers });
       }
 
       const { data, status } = await firstValueFrom(obs);
