@@ -11,6 +11,8 @@ import { CreateInvolvedPersonDto } from './dto/create-involved-person.dto';
 import { UpdateInvolvedPersonDto } from './dto/update-involved-person.dto';
 import { LinkToCaseDto } from './dto/link-to-case.dto';
 import { PaginationDto } from '@aegiscase/dto';
+import { JwtPayload } from '@aegiscase/common';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class InvolvedService {
@@ -19,6 +21,7 @@ export class InvolvedService {
     private readonly personRepo: Repository<InvolvedPerson>,
     @InjectRepository(CaseInvolvedPerson)
     private readonly linkRepo: Repository<CaseInvolvedPerson>,
+    private readonly events: EventPublisherService,
   ) {}
 
   async create(dto: CreateInvolvedPersonDto): Promise<InvolvedPerson> {
@@ -57,7 +60,12 @@ export class InvolvedService {
     return this.personRepo.save(person);
   }
 
-  async linkToCase(id: string, caseId: string, dto: LinkToCaseDto): Promise<CaseInvolvedPerson> {
+  async linkToCase(
+    id: string,
+    caseId: string,
+    dto: LinkToCaseDto,
+    actor: JwtPayload,
+  ): Promise<CaseInvolvedPerson> {
     await this.findOne(id);
 
     const existing = await this.linkRepo.findOne({ where: { involvedPersonId: id, caseId } });
@@ -69,7 +77,15 @@ export class InvolvedService {
       involvementType: dto.involvementType,
       observations: dto.observations ?? null,
     });
-    return this.linkRepo.save(link);
+    const saved = await this.linkRepo.save(link);
+
+    this.events.publishInvolvedPersonLinked(actor.sub, id, {
+      case_id: caseId,
+      involved_person_id: id,
+      involvement_type: dto.involvementType,
+    });
+
+    return saved;
   }
 
   async getCaseLinks(id: string): Promise<CaseInvolvedPerson[]> {

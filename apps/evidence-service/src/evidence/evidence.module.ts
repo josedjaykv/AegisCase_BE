@@ -4,9 +4,10 @@ import { EvidenceController } from './evidence.controller';
 import { EvidenceService } from './evidence.service';
 import { Evidence } from './evidence.entity';
 import { ChainOfCustody } from './chain-of-custody.entity';
+import { EventsModule } from '../events/events.module';
 
 @Module({
-  imports: [TypeOrmModule.forFeature([Evidence, ChainOfCustody])],
+  imports: [TypeOrmModule.forFeature([Evidence, ChainOfCustody]), EventsModule],
   controllers: [EvidenceController],
   providers: [EvidenceService],
   exports: [EvidenceService],

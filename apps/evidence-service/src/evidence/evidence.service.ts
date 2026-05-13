@@ -13,6 +13,7 @@ import { TransferCustodyDto } from './dto/transfer-custody.dto';
 import { EvidenceStatus } from '@aegiscase/enums';
 import { PaginationDto } from '@aegiscase/dto';
 import { JwtPayload } from '@aegiscase/common';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class EvidenceService {
@@ -21,6 +22,7 @@ export class EvidenceService {
     private readonly evidenceRepo: Repository<Evidence>,
     @InjectRepository(ChainOfCustody)
     private readonly custodyRepo: Repository<ChainOfCustody>,
+    private readonly events: EventPublisherService,
   ) {}
 
   async create(dto: CreateEvidenceDto, actor: JwtPayload): Promise<Evidence> {
@@ -42,7 +44,13 @@ export class EvidenceService {
       }),
     );
 
-    return this.findOne(saved.id, actor, false);
+    const created = await this.findOne(saved.id, actor, false);
+    this.events.publishEvidenceAdded(actor.sub, created.id, {
+      case_id: created.caseId,
+      evidence_type: created.evidenceType,
+      custodian_user_id: created.currentCustodianId ?? actor.sub,
+    });
+    return created;
   }
 
   async findAll(pagination: PaginationDto, caseId?: string): Promise<[Evidence[], number]> {
@@ -101,9 +109,19 @@ export class EvidenceService {
       }),
     );
 
+    const previousCustodianId = evidence.currentCustodianId;
     evidence.currentCustodianId = dto.newCustodianId;
     evidence.evidenceStatus = EvidenceStatus.TRANSFERRED;
-    return this.evidenceRepo.save(evidence);
+    const transferred = await this.evidenceRepo.save(evidence);
+
+    this.events.publishEvidenceTransferred(actor.sub, transferred.id, {
+      case_id: transferred.caseId,
+      previous_custodian_id: previousCustodianId,
+      new_custodian_id: dto.newCustodianId,
+      transfer_reason: dto.transferReason,
+    });
+
+    return transferred;
   }
 
   async getCustodyChain(id: string): Promise<ChainOfCustody[]> {
@@ -115,13 +133,20 @@ export class EvidenceService {
     });
   }
 
-  async archive(id: string): Promise<Evidence> {
+  async archive(id: string, actor: JwtPayload): Promise<Evidence> {
     const evidence = await this.evidenceRepo.findOne({ where: { id } });
     if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
     if (evidence.archived) throw new ConflictException('Evidence is already archived');
     evidence.archived = true;
     evidence.archivedAt = new Date();
     evidence.evidenceStatus = EvidenceStatus.ARCHIVED;
-    return this.evidenceRepo.save(evidence);
+    const archived = await this.evidenceRepo.save(evidence);
+
+    this.events.publishEvidenceArchived(actor.sub, archived.id, {
+      case_id: archived.caseId,
+      archived_by_user_id: actor.sub,
+    });
+
+    return archived;
   }
 }

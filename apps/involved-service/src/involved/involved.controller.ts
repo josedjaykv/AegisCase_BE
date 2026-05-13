@@ -14,6 +14,7 @@ import { CreateInvolvedPersonDto } from './dto/create-involved-person.dto';
 import { UpdateInvolvedPersonDto } from './dto/update-involved-person.dto';
 import { LinkToCaseDto } from './dto/link-to-case.dto';
 import { Roles } from '@aegiscase/auth';
+import { CurrentUser, JwtPayload } from '@aegiscase/common';
 import { UserRole } from '@aegiscase/enums';
 import { PaginationDto } from '@aegiscase/dto';
 
@@ -54,8 +55,9 @@ export class InvolvedController {
     @Param('id') id: string,
     @Param('caseId') caseId: string,
     @Body() dto: LinkToCaseDto,
+    @CurrentUser() user: JwtPayload,
   ) {
-    return this.involvedService.linkToCase(id, caseId, dto);
+    return this.involvedService.linkToCase(id, caseId, dto, user);
   }
 
   @Get(':id/cases')
