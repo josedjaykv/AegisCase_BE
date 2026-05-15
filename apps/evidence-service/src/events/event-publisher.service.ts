@@ -1,10 +1,10 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { connect, AmqpConnectionManager, ChannelWrapper } from 'amqp-connection-manager';
 import { v4 as uuidv4 } from 'uuid';
 import {
   EventPatterns,
-  RABBITMQ_CLIENT,
+  INVESTIGATION_EXCHANGE,
+  getRmqUrl,
   EvidenceAddedEvent,
   EvidenceTransferredEvent,
   EvidenceArchivedEvent,
@@ -13,25 +13,28 @@ import {
 @Injectable()
 export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventPublisherService.name);
-
-  constructor(@Inject(RABBITMQ_CLIENT) private readonly client: ClientProxy) {}
+  private connection: AmqpConnectionManager;
+  private channel: ChannelWrapper;
 
   async onModuleInit() {
-    await this.client.connect().catch((err) =>
-      this.logger.warn(`RabbitMQ connect failed (will retry): ${err?.message}`),
-    );
+    this.connection = connect([getRmqUrl()]);
+    this.channel = this.connection.createChannel({
+      setup: (ch: any) =>
+        ch.assertExchange(INVESTIGATION_EXCHANGE, 'topic', { durable: true }),
+    });
+    await this.channel
+      .waitForConnect()
+      .catch((err) => this.logger.warn(`RabbitMQ connect failed: ${err?.message}`));
+    this.logger.log('Connected to RabbitMQ');
   }
 
   async onModuleDestroy() {
-    await this.client.close();
+    await this.channel?.close();
+    await this.connection?.close();
   }
 
-  publishEvidenceAdded(
-    actorUserId: string,
-    evidenceId: string,
-    payload: EvidenceAddedEvent['payload'],
-  ): void {
-    this.emit<EvidenceAddedEvent>(EventPatterns.EVIDENCE_ADDED, {
+  publishEvidenceAdded(actorUserId: string, evidenceId: string, payload: EvidenceAddedEvent['payload']): void {
+    this.publish(EventPatterns.EVIDENCE_ADDED, {
       event_id: uuidv4(),
       event_type: 'evidence.added',
       occurred_at: new Date(),
@@ -42,12 +45,8 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  publishEvidenceTransferred(
-    actorUserId: string,
-    evidenceId: string,
-    payload: EvidenceTransferredEvent['payload'],
-  ): void {
-    this.emit<EvidenceTransferredEvent>(EventPatterns.EVIDENCE_TRANSFERRED, {
+  publishEvidenceTransferred(actorUserId: string, evidenceId: string, payload: EvidenceTransferredEvent['payload']): void {
+    this.publish(EventPatterns.EVIDENCE_TRANSFERRED, {
       event_id: uuidv4(),
       event_type: 'evidence.transferred',
       occurred_at: new Date(),
@@ -58,12 +57,8 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  publishEvidenceArchived(
-    actorUserId: string,
-    evidenceId: string,
-    payload: EvidenceArchivedEvent['payload'],
-  ): void {
-    this.emit<EvidenceArchivedEvent>(EventPatterns.EVIDENCE_ARCHIVED, {
+  publishEvidenceArchived(actorUserId: string, evidenceId: string, payload: EvidenceArchivedEvent['payload']): void {
+    this.publish(EventPatterns.EVIDENCE_ARCHIVED, {
       event_id: uuidv4(),
       event_type: 'evidence.archived',
       occurred_at: new Date(),
@@ -74,9 +69,16 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private emit<T>(pattern: string, event: T): void {
-    lastValueFrom(this.client.emit(pattern, event)).catch((err) =>
-      this.logger.error(`Failed to publish ${pattern}: ${err?.message}`, err?.stack),
-    );
+  private publish(routingKey: string, event: unknown): void {
+    this.channel
+      .publish(
+        INVESTIGATION_EXCHANGE,
+        routingKey,
+        Buffer.from(JSON.stringify(event)),
+        { persistent: true, contentType: 'application/json' },
+      )
+      .catch((err) =>
+        this.logger.error(`Failed to publish ${routingKey}: ${err?.message}`, err?.stack),
+      );
   }
 }

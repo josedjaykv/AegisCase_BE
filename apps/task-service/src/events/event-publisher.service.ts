@@ -1,10 +1,10 @@
-import { Inject, Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
-import { ClientProxy } from '@nestjs/microservices';
-import { lastValueFrom } from 'rxjs';
+import { Injectable, Logger, OnModuleDestroy, OnModuleInit } from '@nestjs/common';
+import { connect, AmqpConnectionManager, ChannelWrapper } from 'amqp-connection-manager';
 import { v4 as uuidv4 } from 'uuid';
 import {
   EventPatterns,
-  RABBITMQ_CLIENT,
+  INVESTIGATION_EXCHANGE,
+  getRmqUrl,
   TaskAssignedEvent,
   TaskCompletedEvent,
   TaskOverdueEvent,
@@ -13,25 +13,28 @@ import {
 @Injectable()
 export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
   private readonly logger = new Logger(EventPublisherService.name);
-
-  constructor(@Inject(RABBITMQ_CLIENT) private readonly client: ClientProxy) {}
+  private connection: AmqpConnectionManager;
+  private channel: ChannelWrapper;
 
   async onModuleInit() {
-    await this.client.connect().catch((err) =>
-      this.logger.warn(`RabbitMQ connect failed (will retry): ${err?.message}`),
-    );
+    this.connection = connect([getRmqUrl()]);
+    this.channel = this.connection.createChannel({
+      setup: (ch: any) =>
+        ch.assertExchange(INVESTIGATION_EXCHANGE, 'topic', { durable: true }),
+    });
+    await this.channel
+      .waitForConnect()
+      .catch((err) => this.logger.warn(`RabbitMQ connect failed: ${err?.message}`));
+    this.logger.log('Connected to RabbitMQ');
   }
 
   async onModuleDestroy() {
-    await this.client.close();
+    await this.channel?.close();
+    await this.connection?.close();
   }
 
-  publishTaskAssigned(
-    actorUserId: string,
-    taskId: string,
-    payload: TaskAssignedEvent['payload'],
-  ): void {
-    this.emit<TaskAssignedEvent>(EventPatterns.TASK_ASSIGNED, {
+  publishTaskAssigned(actorUserId: string, taskId: string, payload: TaskAssignedEvent['payload']): void {
+    this.publish(EventPatterns.TASK_ASSIGNED, {
       event_id: uuidv4(),
       event_type: 'task.assigned',
       occurred_at: new Date(),
@@ -42,12 +45,8 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  publishTaskCompleted(
-    actorUserId: string,
-    taskId: string,
-    payload: TaskCompletedEvent['payload'],
-  ): void {
-    this.emit<TaskCompletedEvent>(EventPatterns.TASK_COMPLETED, {
+  publishTaskCompleted(actorUserId: string, taskId: string, payload: TaskCompletedEvent['payload']): void {
+    this.publish(EventPatterns.TASK_COMPLETED, {
       event_id: uuidv4(),
       event_type: 'task.completed',
       occurred_at: new Date(),
@@ -58,11 +57,8 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  publishTaskOverdue(
-    taskId: string,
-    payload: TaskOverdueEvent['payload'],
-  ): void {
-    this.emit<TaskOverdueEvent>(EventPatterns.TASK_OVERDUE, {
+  publishTaskOverdue(taskId: string, payload: TaskOverdueEvent['payload']): void {
+    this.publish(EventPatterns.TASK_OVERDUE, {
       event_id: uuidv4(),
       event_type: 'task.overdue',
       occurred_at: new Date(),
@@ -73,9 +69,16 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     });
   }
 
-  private emit<T>(pattern: string, event: T): void {
-    lastValueFrom(this.client.emit(pattern, event)).catch((err) =>
-      this.logger.error(`Failed to publish ${pattern}: ${err?.message}`, err?.stack),
-    );
+  private publish(routingKey: string, event: unknown): void {
+    this.channel
+      .publish(
+        INVESTIGATION_EXCHANGE,
+        routingKey,
+        Buffer.from(JSON.stringify(event)),
+        { persistent: true, contentType: 'application/json' },
+      )
+      .catch((err) =>
+        this.logger.error(`Failed to publish ${routingKey}: ${err?.message}`, err?.stack),
+      );
   }
 }

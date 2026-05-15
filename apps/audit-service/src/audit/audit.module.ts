@@ -3,11 +3,11 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { Audit } from './audit.entity';
 import { AuditService } from './audit.service';
 import { AuditController } from './audit.controller';
-import { EventConsumerController } from './event-consumer.controller';
+import { AmqpConsumerService } from './amqp-consumer.service';
 
 @Module({
   imports: [TypeOrmModule.forFeature([Audit])],
-  controllers: [AuditController, EventConsumerController],
-  providers: [AuditService],
+  controllers: [AuditController],
+  providers: [AuditService, AmqpConsumerService],
 })
 export class AuditModule {}
