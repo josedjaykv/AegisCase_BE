@@ -16,6 +16,7 @@ import { AddTeamMemberDto } from './dto/add-team-member.dto';
 import { CaseStatus, TeamRole, UserRole } from '@aegiscase/enums';
 import { PaginationDto } from '@aegiscase/dto';
 import { JwtPayload } from '@aegiscase/common';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class CasesService {
@@ -24,6 +25,7 @@ export class CasesService {
     private readonly caseRepo: Repository<Case>,
     @InjectRepository(CaseTeam)
     private readonly teamRepo: Repository<CaseTeam>,
+    private readonly events: EventPublisherService,
   ) {}
 
   async create(dto: CreateCaseDto, actor: JwtPayload): Promise<Case> {
@@ -46,7 +48,14 @@ export class CasesService {
       );
     }
 
-    return this.findOne(saved.id);
+    const created = await this.findOne(saved.id);
+    this.events.publishCaseCreated(actor.sub, created.id, {
+      case_code: created.caseCode,
+      title: created.title,
+      priority: created.priority,
+      leader_user_id: created.leaderUserId,
+    });
+    return created;
   }
 
   async findAll(pagination: PaginationDto): Promise<[Case[], number]> {
@@ -81,7 +90,16 @@ export class CasesService {
     }
 
     c.status = dto.status;
-    return this.caseRepo.save(c);
+    const updated = await this.caseRepo.save(c);
+
+    if (dto.status === CaseStatus.CLOSED) {
+      this.events.publishCaseClosed(actor.sub, updated.id, {
+        case_code: updated.caseCode,
+        closed_by_user_id: actor.sub,
+      });
+    }
+
+    return updated;
   }
 
   async archive(id: string, actor: JwtPayload): Promise<Case> {
@@ -89,7 +107,14 @@ export class CasesService {
     if (c.archived) throw new ConflictException('Case is already archived');
     c.archived = true;
     c.archivedAt = new Date();
-    return this.caseRepo.save(c);
+    const archived = await this.caseRepo.save(c);
+
+    this.events.publishCaseArchived(actor.sub, archived.id, {
+      case_code: archived.caseCode,
+      archived_by_user_id: actor.sub,
+    });
+
+    return archived;
   }
 
   async addTeamMember(id: string, dto: AddTeamMemberDto): Promise<CaseTeam> {

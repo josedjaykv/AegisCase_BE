@@ -79,7 +79,7 @@ export class EvidenceController {
 
   @Patch(':id/archive')
   @Roles(UserRole.ADMIN)
-  archive(@Param('id') id: string) {
-    return this.evidenceService.archive(id);
+  archive(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
+    return this.evidenceService.archive(id, user);
   }
 }

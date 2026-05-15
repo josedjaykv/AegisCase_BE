@@ -24,6 +24,7 @@ export class ServiceProxyController {
       'involved-persons': this.config.get('INVOLVED_SERVICE_URL', 'http://localhost:3004'),
       evidence: this.config.get('EVIDENCE_SERVICE_URL', 'http://localhost:3005'),
       tasks: this.config.get('TASK_SERVICE_URL', 'http://localhost:3006'),
+      audit: this.config.get('AUDIT_SERVICE_URL', 'http://localhost:3008'),
     };
   }
 
@@ -50,6 +51,11 @@ export class ServiceProxyController {
   @All('tasks*')
   proxyTasks(@Req() req: Request, @Res() res: Response) {
     return this.proxyRequest(req, res, this.serviceUrls['tasks']);
+  }
+
+  @All('audit*')
+  proxyAudit(@Req() req: Request, @Res() res: Response) {
+    return this.proxyRequest(req, res, this.serviceUrls['audit']);
   }
 
   private async proxyRequest(req: Request, res: Response, baseUrl: string) {

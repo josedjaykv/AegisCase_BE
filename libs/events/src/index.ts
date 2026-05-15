@@ -5,3 +5,4 @@ export * from './task.events';
 export * from './involved.events';
 export * from './media.events';
 export * from './event-patterns';
+export * from './rabbitmq.config';

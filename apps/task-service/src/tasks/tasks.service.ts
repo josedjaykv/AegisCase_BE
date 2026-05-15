@@ -13,12 +13,14 @@ import { ChangeTaskStatusDto } from './dto/change-task-status.dto';
 import { TaskStatus, UserRole } from '@aegiscase/enums';
 import { PaginationDto } from '@aegiscase/dto';
 import { JwtPayload } from '@aegiscase/common';
+import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class TasksService {
   constructor(
     @InjectRepository(Task)
     private readonly repo: Repository<Task>,
+    private readonly events: EventPublisherService,
   ) {}
 
   async create(dto: CreateTaskDto, actor: JwtPayload): Promise<Task> {
@@ -28,7 +30,16 @@ export class TasksService {
       assignedByUserId: actor.sub,
       createdByUserId: actor.sub,
     });
-    return this.repo.save(task);
+    const saved = await this.repo.save(task);
+
+    this.events.publishTaskAssigned(actor.sub, saved.id, {
+      case_id: saved.caseId,
+      assigned_to_user_id: saved.assignedToUserId,
+      assigned_by_user_id: actor.sub,
+      due_date: saved.dueDate ?? undefined,
+    });
+
+    return saved;
   }
 
   async findAll(pagination: PaginationDto, assignedToUserId?: string): Promise<[Task[], number]> {
@@ -79,11 +90,30 @@ export class TasksService {
     }
 
     task.status = dto.status;
-    return this.repo.save(task);
+    const updated = await this.repo.save(task);
+
+    if (dto.status === TaskStatus.COMPLETED) {
+      this.events.publishTaskCompleted(actor.sub, updated.id, {
+        case_id: updated.caseId,
+        completed_by_user_id: actor.sub,
+      });
+    }
+
+    return updated;
   }
 
   private async markOverdueTasks(): Promise<void> {
     const today = new Date().toISOString().split('T')[0];
+    const candidates = await this.repo.find({
+      where: {
+        dueDate: LessThan(today) as any,
+        status: Not(In([TaskStatus.COMPLETED, TaskStatus.CANCELLED, TaskStatus.OVERDUE])),
+      },
+      select: ['id', 'caseId', 'dueDate', 'assignedToUserId'],
+    });
+
+    if (candidates.length === 0) return;
+
     await this.repo.update(
       {
         dueDate: LessThan(today) as any,
@@ -91,6 +121,14 @@ export class TasksService {
       },
       { status: TaskStatus.OVERDUE },
     );
+
+    for (const task of candidates) {
+      this.events.publishTaskOverdue(task.id, {
+        case_id: task.caseId,
+        assigned_to_user_id: task.assignedToUserId,
+        due_date: task.dueDate,
+      });
+    }
   }
 
   private assertNotTerminal(task: Task): void {

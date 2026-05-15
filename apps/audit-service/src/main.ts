@@ -8,7 +8,7 @@ async function bootstrap() {
 
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  const port = process.env.PORT || 3008;
+  const port = process.env.PORT ?? process.env.AUDIT_PORT ?? 3008;
   await app.listen(port);
   logger.log(`audit-service running on http://localhost:${port}`);
 }
