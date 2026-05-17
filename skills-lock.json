@@ -13,6 +13,12 @@
       "skillPath": "plugins/developer-essentials/skills/error-handling-patterns/SKILL.md",
       "computedHash": "824c53fa080765f05862d3ec0ef829aaff9f8d544f9de0039b8fcafa6bc1a899"
     },
+    "file-uploads": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/file-uploads/SKILL.md",
+      "computedHash": "a11c5eb9db772c532bdea215b9eb8f2583e1fda0f5506e52a139717f9446ab3a"
+    },
     "microservices-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
@@ -30,6 +36,12 @@
       "sourceType": "github",
       "skillPath": "rabbitmq-development/SKILL.md",
       "computedHash": "5696250d6eb09665ce24ee60d6528f0cd0492c7341a708d0ac2937c307b37a12"
+    },
+    "security-best-practices": {
+      "source": "openai/skills",
+      "sourceType": "github",
+      "skillPath": "skills/.curated/security-best-practices/SKILL.md",
+      "computedHash": "c27616fb4e27999605b90b261dc729784420c8d77bd1a98748384ffaa5b35704"
     }
   }
 }

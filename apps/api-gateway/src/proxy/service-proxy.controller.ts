@@ -24,6 +24,7 @@ export class ServiceProxyController {
       'involved-persons': this.config.get('INVOLVED_SERVICE_URL', 'http://localhost:3004'),
       evidence: this.config.get('EVIDENCE_SERVICE_URL', 'http://localhost:3005'),
       tasks: this.config.get('TASK_SERVICE_URL', 'http://localhost:3006'),
+      media: this.config.get('MEDIA_SERVICE_URL', 'http://localhost:3007'),
       audit: this.config.get('AUDIT_SERVICE_URL', 'http://localhost:3008'),
     };
   }
@@ -53,6 +54,11 @@ export class ServiceProxyController {
     return this.proxyRequest(req, res, this.serviceUrls['tasks']);
   }
 
+  @All('media*')
+  proxyMedia(@Req() req: Request, @Res() res: Response) {
+    return this.proxyRequest(req, res, this.serviceUrls['media']);
+  }
+
   @All('audit*')
   proxyAudit(@Req() req: Request, @Res() res: Response) {
     return this.proxyRequest(req, res, this.serviceUrls['audit']);
@@ -61,15 +67,30 @@ export class ServiceProxyController {
   private async proxyRequest(req: Request, res: Response, baseUrl: string) {
     const url = `${baseUrl}${req.url}`;
     const method = req.method.toLowerCase() as any;
-    const headers = this.forwardHeaders(req);
+    const isMultipart = req.headers['content-type']?.startsWith('multipart/form-data');
 
     try {
       const hasBody = ['post', 'put', 'patch'].includes(method);
       let obs: Observable<AxiosResponse>;
-      if (hasBody) {
-        obs = this.http.request({ method, url, data: req.body, headers });
+
+      if (hasBody && isMultipart) {
+        // Pipe the raw request stream so the multipart boundary is preserved
+        obs = this.http.request({
+          method,
+          url,
+          data: req,
+          headers: {
+            ...this.forwardHeaders(req),
+            'content-type': req.headers['content-type'],
+            ...(req.headers['content-length'] && { 'content-length': req.headers['content-length'] }),
+          },
+          maxContentLength: Infinity,
+          maxBodyLength: Infinity,
+        });
+      } else if (hasBody) {
+        obs = this.http.request({ method, url, data: req.body, headers: this.forwardHeaders(req) });
       } else {
-        obs = this.http.request({ method, url, headers });
+        obs = this.http.request({ method, url, headers: this.forwardHeaders(req) });
       }
 
       const { data, status } = await firstValueFrom(obs);
