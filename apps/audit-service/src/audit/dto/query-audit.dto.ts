@@ -1,4 +1,4 @@
-import { IsDateString, IsInt, IsOptional, IsString, IsUUID, Max, Min } from 'class-validator';
+import { IsInt, IsOptional, IsString, Matches, Max, Min } from 'class-validator';
 import { Type } from 'class-transformer';
 
 export class QueryAuditDto {
@@ -32,10 +32,14 @@ export class QueryAuditDto {
   action?: string;
 
   @IsOptional()
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, {
+    message: 'from_date must be a valid date (YYYY-MM-DD or ISO 8601)',
+  })
   from_date?: string;
 
   @IsOptional()
-  @IsDateString()
+  @Matches(/^\d{4}-\d{2}-\d{2}(T\d{2}:\d{2}:\d{2}(\.\d+)?Z)?$/, {
+    message: 'to_date must be a valid date (YYYY-MM-DD or ISO 8601)',
+  })
   to_date?: string;
 }
