@@ -10,7 +10,7 @@ Gestión de archivos multimedia con almacenamiento en AWS S3. Los archivos NUNCA
 Cliente → POST /media (multipart)
         → Gateway (proxy raw stream)
         → media-service
-            1. Valida archivo (tamaño, MIME type)
+            1. Valida archivo (tamaño → magic bytes → MIME whitelist)
             2. Genera S3 key: {folder}/{entityId}/{uuid}.{ext}
             3. Sube a S3 (AES256 server-side encryption)
             4. Guarda registro en media_db
@@ -153,13 +153,161 @@ Configurable via `ALLOWED_MIME_TYPES` en `.env`.
 
 ---
 
+## Validación de archivos
+
+El servidor aplica dos capas de validación en este orden:
+
+### Capa 1 — Tamaño
+Si el archivo supera `MAX_FILE_SIZE` (default 50MB) → `400 Bad Request`.
+
+### Capa 2 — Magic bytes (contenido real)
+El servidor lee los primeros bytes del archivo con `file-type` para detectar el tipo real, **ignorando lo que el cliente declara**. Esta validación tiene dos reglas:
+
+**Archivos binarios** (imágenes, PDF, video, audio, Office):
+- Si `file-type` detecta un tipo diferente al `Content-Type` declarado → `400`.
+- Si el tipo detectado no está en `ALLOWED_MIME_TYPES` → `400`.
+
+```
+Cliente declara: text/plain
+Contenido real:  image/jpeg   →  400 "File content (image/jpeg) does not match declared type (text/plain)"
+
+Cliente declara: image/jpeg
+Contenido real:  image/jpeg   →  ✅ pasa (si image/jpeg está en la whitelist)
+```
+
+**Archivos de texto** (`text/plain`, `.txt`):
+- `file-type` no detecta magic bytes en texto plano → el servidor permite `text/plain` y solo `text/plain`.
+- Si el cliente declara cualquier otro tipo para un archivo sin magic bytes → `400`.
+
+```
+Cliente declara: text/plain, archivo: documento.txt  →  ✅ pasa
+Cliente declara: application/pdf, archivo: .exe     →  400 (file-type detecta MZ/exe o falla)
+```
+
+> **Limitación conocida V1:** ejecutables Windows (`.exe`) no tienen magic bytes en la base de datos de `file-type`. Si un cliente declara `text/plain` y sube un `.exe`, el archivo pasa la validación porque el servidor no puede identificarlo como ejecutable. Mitigación V2: agregar validación manual de firma `MZ` (`0x4D 0x5A`).
+
+---
+
+## Guía para el cliente (frontend)
+
+### Regla fundamental
+
+**Siempre declara el MIME type real del archivo.** El servidor lo verifica contra el contenido — si no coinciden, el upload es rechazado.
+
+### Cómo construir el FormData correctamente
+
+```typescript
+// ✅ CORRECTO — el tipo coincide con el contenido real
+const formData = new FormData();
+formData.append('file', file, file.name);        // el browser detecta el MIME del File object
+formData.append('entity_type', 'CASE');
+formData.append('entity_id', caseId);
+
+// ❌ INCORRECTO — nunca sobreescribas el MIME type
+formData.append('file', new Blob([file], { type: 'text/plain' }), file.name);
+```
+
+Cuando usas un objeto `File` nativo del browser, el MIME type se toma del sistema operativo y es el correcto. No lo sobreescribas con un `Blob` a menos que sepas exactamente lo que estás haciendo.
+
+### Tabla de tipos de archivo y MIME types
+
+| Tipo de archivo | MIME type a declarar |
+|----------------|---------------------|
+| PDF | `application/pdf` |
+| Imagen PNG | `image/png` |
+| Imagen JPG/JPEG | `image/jpeg` |
+| Imagen GIF | `image/gif` |
+| Imagen WebP | `image/webp` |
+| Video MP4 | `video/mp4` |
+| Audio MP3 | `audio/mpeg` |
+| Word (.doc) | `application/msword` |
+| Word (.docx) | `application/vnd.openxmlformats-officedocument.wordprocessingml.document` |
+| Texto plano | `text/plain` |
+
+### Validación en el cliente antes de subir
+
+Hazla para dar feedback rápido al usuario, pero **no la uses como reemplazo** de la validación del servidor:
+
+```typescript
+const ALLOWED_MIME_TYPES = [
+  'application/pdf',
+  'image/png',
+  'image/jpeg',
+  'image/gif',
+  'image/webp',
+  'video/mp4',
+  'audio/mpeg',
+  'application/msword',
+  'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+  'text/plain',
+];
+
+const MAX_FILE_SIZE = 50 * 1024 * 1024; // 50MB
+
+function validateFileBeforeUpload(file: File): string | null {
+  if (file.size > MAX_FILE_SIZE) {
+    return `El archivo supera el tamaño máximo de 50MB`;
+  }
+  if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    return `Tipo de archivo no permitido: ${file.type}`;
+  }
+  return null; // válido
+}
+```
+
+### Manejo de errores del servidor
+
+```typescript
+async function uploadMedia(file: File, entityType: string, entityId: string) {
+  const formData = new FormData();
+  formData.append('file', file);
+  formData.append('entity_type', entityType);
+  formData.append('entity_id', entityId);
+
+  const response = await fetch('/media', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}` },
+    body: formData,
+    // NO pongas Content-Type aquí — el browser lo genera con el boundary correcto
+  });
+
+  if (!response.ok) {
+    const error = await response.json();
+    // error.statusCode === 400 → archivo inválido (mensaje en error.message)
+    // error.statusCode === 413 → archivo demasiado grande
+    // error.statusCode === 503 → S3 no disponible, reintentar
+    throw new Error(error.message);
+  }
+
+  return response.json(); // MediaRecord con id, url, s3Key, etc.
+}
+```
+
+> **Importante:** no pongas el header `Content-Type: multipart/form-data` manualmente. El browser lo agrega automáticamente con el `boundary` correcto. Si lo pones tú, el servidor no puede parsear el body.
+
+### Flujo recomendado para mostrar archivos
+
+```
+1. Usuario selecciona archivo
+2. Cliente valida localmente (tamaño, tipo) → feedback inmediato
+3. Cliente llama POST /media
+4. Servidor valida magic bytes y sube a S3
+5. Servidor devuelve { id, url, ... }
+6. Para mostrar/descargar: cliente llama GET /media/{id}/download-url
+7. Cliente redirige al usuario a la pre-signed URL (válida 1 hora)
+```
+
+Nunca uses el campo `url` directamente para mostrar el archivo — el bucket es privado. Siempre genera una pre-signed URL.
+
+---
+
 ## Seguridad
 
 - Archivos **privados** en S3 (sin ACL pública)
 - Encriptación server-side: `AES256` en cada upload
 - Nombres UUID — nunca el nombre original del usuario
 - Pre-signed URLs con expiración de 1 hora
-- Validación de MIME type en el servidor (no confía en el cliente)
+- Doble validación: MIME type declarado + magic bytes del contenido real
 
 ---
 

@@ -77,7 +77,7 @@ export class MediaService {
     dto: UploadMediaDto,
     uploadedByUserId: string,
   ): Promise<Media> {
-    this.validateFile(file);
+    await this.validateFile(file);
 
     const ext = MIME_TO_EXT[file.mimetype] ?? path.extname(file.originalname).slice(1) ?? 'bin';
     const s3Key = `${ENTITY_FOLDER[dto.entity_type]}/${dto.entity_id}/${uuidv4()}.${ext}`;
@@ -144,18 +144,38 @@ export class MediaService {
     this.logger.log(`Media soft-deleted: ${id}`);
   }
 
-  private validateFile(file: Express.Multer.File): void {
+  private async validateFile(file: Express.Multer.File): Promise<void> {
     if (!file) {
       throw new BadRequestException('No file provided');
     }
+
     if (file.size > this.maxFileSize) {
       const maxMb = Math.round(this.maxFileSize / 1024 / 1024);
       throw new BadRequestException(`File exceeds maximum size of ${maxMb}MB`);
     }
-    if (!this.allowedMimeTypes.includes(file.mimetype)) {
-      throw new BadRequestException(
-        `MIME type "${file.mimetype}" is not allowed. Allowed: ${this.allowedMimeTypes.join(', ')}`,
-      );
+
+    // Detect actual file type from magic bytes — ignores client-declared MIME type
+    const { fileTypeFromBuffer } = await import('file-type');
+    const detected = await fileTypeFromBuffer(file.buffer);
+
+    if (detected) {
+      // Binary file with identifiable magic bytes: must match declared type AND be in allowlist
+      if (detected.mime !== file.mimetype) {
+        throw new BadRequestException(
+          `File content (${detected.mime}) does not match declared type (${file.mimetype})`,
+        );
+      }
+      if (!this.allowedMimeTypes.includes(detected.mime)) {
+        throw new BadRequestException(`File type "${detected.mime}" is not allowed`);
+      }
+    } else {
+      // No magic bytes detected — file is likely plain text
+      // Only allow if declared MIME is text/plain
+      if (file.mimetype !== 'text/plain') {
+        throw new BadRequestException(
+          `Cannot verify file type. Declare content as text/plain or use a supported binary format`,
+        );
+      }
     }
   }
 }
