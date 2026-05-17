@@ -15,9 +15,11 @@ export class Audit {
   @Column({ name: 'event_id' })
   eventId: string;
 
-  @Column({ name: 'user_id', type: 'uuid' })
+  @Index()
+  @Column({ name: 'user_id' })
   userId: string;
 
+  @Index()
   @Column()
   action: string;
 
@@ -35,6 +37,10 @@ export class Audit {
   @Column({ name: 'new_state', type: 'jsonb', nullable: true })
   newState: Record<string, any> | null;
 
+  @Column({ name: 'event_payload', type: 'jsonb', nullable: true })
+  eventPayload: Record<string, any> | null;
+
+  @Index()
   @CreateDateColumn({ name: 'created_at', type: 'timestamptz' })
   createdAt: Date;
 }

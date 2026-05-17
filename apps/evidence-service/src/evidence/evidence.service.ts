@@ -30,7 +30,7 @@ export class EvidenceService {
       ...dto,
       createdByUserId: actor.sub,
       evidenceStatus: EvidenceStatus.REGISTERED,
-      currentCustodianId: dto.currentCustodianId ?? null,
+      currentCustodianId: dto.currentCustodianId ?? actor.sub,
     });
     const saved = await this.evidenceRepo.save(evidence);
 
