@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { TasksService } from './tasks.service';
 import { CreateTaskDto } from './dto/create-task.dto';
 import { UpdateTaskDto } from './dto/update-task.dto';
@@ -26,6 +27,8 @@ class TaskFilterDto extends PaginationDto {
   assignedToUserId?: string;
 }
 
+@ApiTags('Tasks')
+@ApiBearerAuth()
 @Controller('tasks')
 export class TasksController {
   constructor(private readonly tasksService: TasksService) {}
@@ -33,12 +36,14 @@ export class TasksController {
   @Post()
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Create task (ADMIN, DETECTIVE)' })
   create(@Body() dto: CreateTaskDto, @CurrentUser() user: JwtPayload) {
     return this.tasksService.create(dto, user);
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'List tasks (optionally filtered by assignedToUserId)' })
   async findAll(@Query() query: TaskFilterDto) {
     const { assignedToUserId, ...pagination } = query;
     const [data, total] = await this.tasksService.findAll(pagination, assignedToUserId);
@@ -47,12 +52,14 @@ export class TasksController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Get task by ID' })
   findOne(@Param('id') id: string) {
     return this.tasksService.findOne(id);
   }
 
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Update task (assignee, ADMIN or DETECTIVE)' })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateTaskDto,
@@ -63,6 +70,7 @@ export class TasksController {
 
   @Patch(':id/status')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Change task status' })
   changeStatus(
     @Param('id') id: string,
     @Body() dto: ChangeTaskStatusDto,

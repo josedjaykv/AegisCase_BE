@@ -10,6 +10,7 @@ import {
   HttpCode,
   HttpStatus,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { EvidenceService } from './evidence.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 import { UpdateEvidenceDto } from './dto/update-evidence.dto';
@@ -26,6 +27,8 @@ class EvidenceFilterDto extends PaginationDto {
   caseId?: string;
 }
 
+@ApiTags('Evidence')
+@ApiBearerAuth()
 @Controller('evidence')
 export class EvidenceController {
   constructor(private readonly evidenceService: EvidenceService) {}
@@ -33,12 +36,14 @@ export class EvidenceController {
   @Post()
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
   @HttpCode(HttpStatus.CREATED)
+  @ApiOperation({ summary: 'Register evidence (ADMIN, DETECTIVE)' })
   create(@Body() dto: CreateEvidenceDto, @CurrentUser() user: JwtPayload) {
     return this.evidenceService.create(dto, user);
   }
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'List evidence (optionally filtered by caseId)' })
   async findAll(@Query() query: EvidenceFilterDto) {
     const { caseId, ...pagination } = query;
     const [data, total] = await this.evidenceService.findAll(pagination, caseId);
@@ -47,12 +52,14 @@ export class EvidenceController {
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Get evidence by ID (records a chain-of-custody view)' })
   findOne(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.evidenceService.findOne(id, user);
   }
 
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
+  @ApiOperation({ summary: 'Update evidence (ADMIN, DETECTIVE)' })
   update(
     @Param('id') id: string,
     @Body() dto: UpdateEvidenceDto,
@@ -63,6 +70,7 @@ export class EvidenceController {
 
   @Patch(':id/transfer-custody')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
+  @ApiOperation({ summary: 'Transfer custody to another user' })
   transferCustody(
     @Param('id') id: string,
     @Body() dto: TransferCustodyDto,
@@ -73,12 +81,14 @@ export class EvidenceController {
 
   @Get(':id/chain-of-custody')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Get full chain-of-custody history' })
   getCustodyChain(@Param('id') id: string) {
     return this.evidenceService.getCustodyChain(id);
   }
 
   @Patch(':id/archive')
   @Roles(UserRole.ADMIN)
+  @ApiOperation({ summary: 'Archive evidence (ADMIN only)' })
   archive(@Param('id') id: string, @CurrentUser() user: JwtPayload) {
     return this.evidenceService.archive(id, user);
   }

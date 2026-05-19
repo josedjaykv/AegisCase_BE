@@ -11,6 +11,7 @@ import {
   UploadedFile,
   UseInterceptors,
 } from '@nestjs/common';
+import { ApiBearerAuth, ApiConsumes, ApiOperation, ApiTags } from '@nestjs/swagger';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { memoryStorage } from 'multer';
 import { MediaService } from './media.service';
@@ -27,6 +28,8 @@ class MediaByEntityQuery extends PaginationDto {
   entity_type?: MediaEntityType;
 }
 
+@ApiTags('Media')
+@ApiBearerAuth()
 @Controller('media')
 export class MediaController {
   constructor(private readonly mediaService: MediaService) {}
@@ -40,6 +43,8 @@ export class MediaController {
       limits: { fileSize: 100 * 1024 * 1024 }, // 100MB hard cap at multer level
     }),
   )
+  @ApiConsumes('multipart/form-data')
+  @ApiOperation({ summary: 'Upload media file to S3 and associate with entity' })
   upload(
     @UploadedFile() file: Express.Multer.File,
     @Body() dto: UploadMediaDto,
@@ -50,6 +55,7 @@ export class MediaController {
 
   @Get('entity/:entityType/:entityId')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'List media for a given entity' })
   findByEntity(
     @Param('entityType') entityType: MediaEntityType,
     @Param('entityId') entityId: string,
@@ -60,12 +66,14 @@ export class MediaController {
 
   @Get(':id/download-url')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Generate a pre-signed download URL for media' })
   getDownloadUrl(@Param('id') id: string) {
     return this.mediaService.getDownloadUrl(id);
   }
 
   @Get(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Get media metadata by ID' })
   findOne(@Param('id') id: string) {
     return this.mediaService.findOne(id);
   }
@@ -73,6 +81,7 @@ export class MediaController {
   @Delete(':id')
   @Roles(UserRole.ADMIN)
   @HttpCode(HttpStatus.NO_CONTENT)
+  @ApiOperation({ summary: 'Soft-delete media (ADMIN only)' })
   async softDelete(@Param('id') id: string) {
     await this.mediaService.softDelete(id);
   }
