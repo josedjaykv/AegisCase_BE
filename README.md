@@ -87,7 +87,6 @@ docker-compose up --build
 | Service          | URL                            | Purpose              |
 |------------------|--------------------------------|----------------------|
 | API Gateway      | http://localhost:3000          | Main entry point     |
-| Swagger Docs     | http://localhost:3000/api/docs | API documentation    |
 | Auth Service     | http://localhost:3001          | Authentication       |
 | User Service     | http://localhost:3002          | User profiles        |
 | Case Service     | http://localhost:3003          | Case management      |
@@ -96,6 +95,9 @@ docker-compose up --build
 | Task Service     | http://localhost:3006          | Task management      |
 | Media Service    | http://localhost:3007          | File uploads         |
 | Audit Service    | http://localhost:3008          | Audit logs           |
+
+Each service exposes Swagger UI at `/api/docs` (e.g. http://localhost:3003/api/docs for cases). See [docs/API_REFERENCE.md](docs/API_REFERENCE.md#swagger-endpoints) for the full list.
+
 | RabbitMQ UI      | http://localhost:15672         | Message broker admin |
 | Keycloak Admin   | http://localhost:8080          | Identity provider    |
 
@@ -165,11 +167,20 @@ POST /auth/validate   — Validate token (requires Bearer)
 |-------|--------|-------------|
 | 1 — Base Infrastructure | **Done** | Monorepo, scaffolding, Docker |
 | 2 — Security | **Done** | Keycloak, JWT, Guards, Postman |
-| 3 — Core Services | Pending | Business logic per service |
-| 4 — Events | Pending | RabbitMQ publishers/consumers |
-| 5 — Audit | Pending | Traceability |
-| 6 — Media | Pending | S3 integration |
-| 7 — Testing & Docs | Pending | Postman, E2E tests |
+| 3 — Core Services | **Done** | Business logic per service |
+| 4 — Events | **Done** | RabbitMQ publishers/consumers |
+| 5 — Audit | **Done** | Traceability |
+| 6 — Media | **Done** | S3 integration |
+| 7 — Testing & Docs | In progress | Swagger on every service, reference docs (see [docs/](docs/)) |
+
+## Documentation
+
+- [docs/API_REFERENCE.md](docs/API_REFERENCE.md) — Endpoint catalog + Swagger URLs
+- [docs/TESTING_GUIDE.md](docs/TESTING_GUIDE.md) — How to smoke-test via Swagger / Postman
+- [docs/DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md) — Pre/post-deployment checks
+- [docs/EVENTS.md](docs/EVENTS.md) — RabbitMQ event catalog
+- [docs/AUDIT.md](docs/AUDIT.md) — Audit semantics
+- [docs/MEDIA.md](docs/MEDIA.md) — Media service, S3 details
 
 ## Useful Commands
 
