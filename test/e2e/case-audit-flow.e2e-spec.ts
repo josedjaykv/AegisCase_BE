@@ -1,41 +1,17 @@
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import { NestFactory } from '@nestjs/core';
+import { INestApplication } from '@nestjs/common';
 import * as request from 'supertest';
-import { AllExceptionsFilter } from '@aegiscase/common';
 import { CasePriority } from '@aegiscase/enums';
 import { applyInfraEnv, E2EInfra, startInfra } from './helpers/containers';
 import { signTestToken, TEST_DETECTIVE } from './helpers/jwt';
+import { bootstrapApp, pollUntil } from './helpers/bootstrap';
 
 /**
  * Anchor E2E: exercises the full critical async path:
  *   HTTP (case-service) -> Postgres write -> RabbitMQ publish -> audit-service consumer -> Postgres write -> HTTP (audit-service).
  *
  * Both NestApplications run in-process. Infra (Postgres + RabbitMQ) is spun up via testcontainers.
- * JWTs are signed locally with HS256 — KEYCLOAK_URL is left unset so JwtStrategy uses its dev fallback.
+ * JWTs are signed locally with HS256 — KEYCLOAK_URL is left empty so JwtStrategy uses its dev fallback.
  */
-
-const POLL_INTERVAL_MS = 250;
-const POLL_TIMEOUT_MS = 15_000;
-
-async function pollUntil<T>(fn: () => Promise<T | null>, label: string): Promise<T> {
-  const deadline = Date.now() + POLL_TIMEOUT_MS;
-  while (Date.now() < deadline) {
-    const result = await fn();
-    if (result) return result;
-    await new Promise((r) => setTimeout(r, POLL_INTERVAL_MS));
-  }
-  throw new Error(`Timed out waiting for ${label} after ${POLL_TIMEOUT_MS}ms`);
-}
-
-async function bootstrap(modulePath: string): Promise<INestApplication> {
-  // Lazy require so env is set before AppModule loads ConfigService
-  const { AppModule } = await import(modulePath);
-  const app = await NestFactory.create(AppModule, { logger: false });
-  app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
-  app.useGlobalFilters(new AllExceptionsFilter());
-  await app.init();
-  return app;
-}
 
 describe('E2E — Case → Event → Audit', () => {
   let infra: E2EInfra;
@@ -47,9 +23,13 @@ describe('E2E — Case → Event → Audit', () => {
     infra = await startInfra();
     applyInfraEnv(infra);
 
+    // Lazy require so AppModules load AFTER applyInfraEnv populated process.env.
+    const { AppModule: AuditAppModule } = require('../../apps/audit-service/src/app.module');
+    const { AppModule: CaseAppModule } = require('../../apps/case-service/src/app.module');
+
     // Order matters: start audit-service first so the consumer is bound before we publish.
-    auditApp = await bootstrap('../../apps/audit-service/src/app.module');
-    caseApp = await bootstrap('../../apps/case-service/src/app.module');
+    auditApp = await bootstrapApp(AuditAppModule);
+    caseApp = await bootstrapApp(CaseAppModule);
 
     detectiveToken = signTestToken(TEST_DETECTIVE);
   }, 180_000);
