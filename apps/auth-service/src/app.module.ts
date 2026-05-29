@@ -3,6 +3,7 @@ import { ConfigModule } from '@nestjs/config';
 import { ThrottlerModule } from '@nestjs/throttler';
 import { TerminusModule } from '@nestjs/terminus';
 import { AuthModule } from './auth/auth.module';
+import { KeycloakModule } from './keycloak/keycloak.module';
 import { HealthController } from './health/health.controller';
 
 @Module({
@@ -11,6 +12,7 @@ import { HealthController } from './health/health.controller';
     TerminusModule,
     ThrottlerModule.forRoot([{ ttl: 60000, limit: 20 }]),
     AuthModule,
+    KeycloakModule,
   ],
   controllers: [HealthController],
 })

@@ -60,6 +60,13 @@ export const PERMISSION_MATRIX = {
     read:    [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
     update:  [UserRole.ADMIN],
     delete:  [UserRole.ADMIN],
+    // GET /users/directory — minimal projection (keycloakUserId, firstNames,
+    // lastNames, role) used by the FE to display teammates by name.
+    // Readable by every authenticated role; PII stays behind admin endpoints.
+    readDirectory:    [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
+    // GET /users/by-keycloak-ids — ADMIN-only, returns the internal user-service
+    // id alongside the sub; consumed by auth-service. Do NOT widen.
+    readByKeycloakIds: [UserRole.ADMIN],
   },
 
   // ── Audit ────────────────────────────────────────────────────────────────

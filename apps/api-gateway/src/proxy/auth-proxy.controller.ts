@@ -10,10 +10,11 @@ import {
 } from '@nestjs/common';
 import { HttpService } from '@nestjs/axios';
 import { ConfigService } from '@nestjs/config';
-import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
+import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { Request, Response } from 'express';
 import { firstValueFrom } from 'rxjs';
-import { Public } from '@aegiscase/auth';
+import { Public, Roles } from '@aegiscase/auth';
+import { UserRole } from '@aegiscase/enums';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -56,6 +57,24 @@ export class AuthProxyController {
   @ApiOperation({ summary: 'Get current user — proxied to auth-service' })
   async me(@Req() req: Request, @Res() res: Response) {
     return this.proxy('GET', '/auth/me', null, res, req.headers['authorization']);
+  }
+
+  @ApiBearerAuth()
+  @Roles(UserRole.ADMIN)
+  @Get('keycloak-users')
+  @ApiOperation({ summary: 'Search Keycloak users — proxied to auth-service (ADMIN)' })
+  @ApiQuery({ name: 'search', required: true })
+  @ApiQuery({ name: 'page', required: false })
+  @ApiQuery({ name: 'limit', required: false })
+  async keycloakUsers(@Req() req: Request, @Res() res: Response) {
+    const qs = req.url.includes('?') ? req.url.slice(req.url.indexOf('?')) : '';
+    return this.proxy(
+      'GET',
+      `/auth/keycloak-users${qs}`,
+      null,
+      res,
+      req.headers['authorization'],
+    );
   }
 
   @ApiBearerAuth()
