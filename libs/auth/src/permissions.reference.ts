@@ -24,6 +24,13 @@ export const PERMISSION_MATRIX = {
     close:        [UserRole.ADMIN, UserRole.DETECTIVE],
     assignLeader: [UserRole.ADMIN, UserRole.DETECTIVE],
     assignTeam:   [UserRole.ADMIN, UserRole.DETECTIVE],
+    team: {
+      add:        [UserRole.ADMIN, UserRole.DETECTIVE],
+      // PATCH /cases/:id/team/:userId — change an existing member's role
+      // (only LEAD ↔ MEMBER; CREATOR is immutable and cannot be assigned).
+      updateRole: [UserRole.ADMIN, UserRole.DETECTIVE],
+      read:       [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
+    },
   },
 
   // ── Evidence ─────────────────────────────────────────────────────────────
