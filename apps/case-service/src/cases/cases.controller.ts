@@ -16,6 +16,7 @@ import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AddTeamMemberDto } from './dto/add-team-member.dto';
+import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 import { Roles } from '@aegiscase/auth';
 import { CurrentUser, JwtPayload } from '@aegiscase/common';
 import { UserRole } from '@aegiscase/enums';
@@ -85,6 +86,17 @@ export class CasesController {
   @ApiOperation({ summary: 'Add team member to case' })
   addTeamMember(@Param('id') id: string, @Body() dto: AddTeamMemberDto) {
     return this.casesService.addTeamMember(id, dto);
+  }
+
+  @Patch(':id/team/:userId')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
+  @ApiOperation({ summary: "Update a team member's role (ADMIN, DETECTIVE)" })
+  updateTeamMemberRole(
+    @Param('id') id: string,
+    @Param('userId') userId: string,
+    @Body() dto: UpdateTeamMemberDto,
+  ) {
+    return this.casesService.updateTeamMemberRole(id, userId, dto);
   }
 
   @Get(':id/team')

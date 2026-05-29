@@ -127,9 +127,10 @@ Base path: `/cases`
 | PATCH  | `/cases/:id/status`        | ADMIN, DETECTIVE            | Change status                  |
 | PATCH  | `/cases/:id/archive`       | ADMIN                       | Archive case                   |
 | POST   | `/cases/:id/team`          | ADMIN, DETECTIVE            | Add team member                |
+| PATCH  | `/cases/:id/team/:userId`  | ADMIN, DETECTIVE            | Update a team member's role (LEAD ↔ MEMBER) |
 | GET    | `/cases/:id/team`          | ADMIN, DETECTIVE, ANALYST   | List team members              |
 
-**Business rules:** closed cases cannot be modified operationally; only `ADMIN` can archive or reopen.
+**Business rules:** closed cases cannot be modified operationally; only `ADMIN` can archive or reopen. The `CREATOR` team role is immutable and cannot be assigned via `PATCH /cases/:id/team/:userId`; there is no "remove team member" route.
 
 ---
 

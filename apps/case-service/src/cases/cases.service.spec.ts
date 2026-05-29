@@ -224,4 +224,108 @@ describe('CasesService', () => {
       expect(teamRepo.save).toHaveBeenCalled();
     });
   });
+
+  describe('updateTeamMemberRole', () => {
+    const openCase = { id: 'c1', status: CaseStatus.OPEN } as any;
+
+    it('promotes a MEMBER to LEAD and returns the updated row', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      teamRepo.findOne.mockResolvedValueOnce({
+        caseId: 'c1',
+        userId: 'u9',
+        teamRole: TeamRole.MEMBER,
+      } as any);
+      teamRepo.save.mockImplementationOnce(async (e: any) => e);
+
+      const result: any = await service.updateTeamMemberRole('c1', 'u9', {
+        teamRole: TeamRole.LEAD,
+      });
+
+      expect(result.teamRole).toBe(TeamRole.LEAD);
+      expect(teamRepo.save).toHaveBeenCalled();
+    });
+
+    it('demotes a LEAD to MEMBER and returns the updated row', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      teamRepo.findOne.mockResolvedValueOnce({
+        caseId: 'c1',
+        userId: 'u9',
+        teamRole: TeamRole.LEAD,
+      } as any);
+      teamRepo.save.mockImplementationOnce(async (e: any) => e);
+
+      const result: any = await service.updateTeamMemberRole('c1', 'u9', {
+        teamRole: TeamRole.MEMBER,
+      });
+
+      expect(result.teamRole).toBe(TeamRole.MEMBER);
+    });
+
+    it('is a no-op (200, unchanged) when the role already matches and does not save', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      const member = { caseId: 'c1', userId: 'u9', teamRole: TeamRole.LEAD } as any;
+      teamRepo.findOne.mockResolvedValueOnce(member);
+
+      const result = await service.updateTeamMemberRole('c1', 'u9', {
+        teamRole: TeamRole.LEAD,
+      });
+
+      expect(result).toBe(member);
+      expect(teamRepo.save).not.toHaveBeenCalled();
+    });
+
+    it("rejects changing the CREATOR's role", async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      teamRepo.findOne.mockResolvedValueOnce({
+        caseId: 'c1',
+        userId: 'u1',
+        teamRole: TeamRole.CREATOR,
+      } as any);
+
+      await expect(
+        service.updateTeamMemberRole('c1', 'u1', { teamRole: TeamRole.MEMBER }),
+      ).rejects.toThrow("The case creator's role cannot be changed");
+      expect(teamRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects assigning the CREATOR role', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      teamRepo.findOne.mockResolvedValueOnce({
+        caseId: 'c1',
+        userId: 'u9',
+        teamRole: TeamRole.MEMBER,
+      } as any);
+
+      await expect(
+        service.updateTeamMemberRole('c1', 'u9', { teamRole: TeamRole.CREATOR }),
+      ).rejects.toThrow('Cannot assign the CREATOR role');
+      expect(teamRepo.save).not.toHaveBeenCalled();
+    });
+
+    it('rejects edits on a closed case', async () => {
+      caseRepo.findOne.mockResolvedValueOnce({ id: 'c1', status: CaseStatus.CLOSED } as any);
+
+      await expect(
+        service.updateTeamMemberRole('c1', 'u9', { teamRole: TeamRole.LEAD }),
+      ).rejects.toThrow('A closed case cannot be modified');
+      expect(teamRepo.findOne).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFound when the case is missing', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateTeamMemberRole('missing', 'u9', { teamRole: TeamRole.LEAD }),
+      ).rejects.toBeInstanceOf(NotFoundException);
+    });
+
+    it('throws NotFound "Team member not found" when the pair is missing', async () => {
+      caseRepo.findOne.mockResolvedValueOnce(openCase);
+      teamRepo.findOne.mockResolvedValueOnce(null);
+
+      await expect(
+        service.updateTeamMemberRole('c1', 'u9', { teamRole: TeamRole.LEAD }),
+      ).rejects.toThrow('Team member not found');
+    });
+  });
 });

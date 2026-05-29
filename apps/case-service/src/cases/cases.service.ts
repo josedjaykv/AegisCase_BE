@@ -13,6 +13,7 @@ import { CreateCaseDto } from './dto/create-case.dto';
 import { UpdateCaseDto } from './dto/update-case.dto';
 import { ChangeStatusDto } from './dto/change-status.dto';
 import { AddTeamMemberDto } from './dto/add-team-member.dto';
+import { UpdateTeamMemberDto } from './dto/update-team-member.dto';
 import { CaseStatus, TeamRole, UserRole } from '@aegiscase/enums';
 import { PaginationDto } from '@aegiscase/dto';
 import { JwtPayload } from '@aegiscase/common';
@@ -125,6 +126,36 @@ export class CasesService {
     if (existing) throw new ConflictException('User is already a team member');
 
     const member = this.teamRepo.create({ caseId: id, userId: dto.userId, teamRole: dto.teamRole });
+    return this.teamRepo.save(member);
+  }
+
+  /**
+   * Changes the role of an existing team member. Only ever swaps between LEAD
+   * and MEMBER: the CREATOR row is immutable provenance, and CREATOR cannot be
+   * assigned via this route. No event is published (team edits are event-free).
+   */
+  async updateTeamMemberRole(
+    id: string,
+    userId: string,
+    dto: UpdateTeamMemberDto,
+  ): Promise<CaseTeam> {
+    const c = await this.findOne(id);
+    this.assertNotClosed(c);
+
+    const member = await this.teamRepo.findOne({ where: { caseId: id, userId } });
+    if (!member) throw new NotFoundException('Team member not found');
+
+    if (member.teamRole === TeamRole.CREATOR) {
+      throw new BadRequestException("The case creator's role cannot be changed");
+    }
+    if (dto.teamRole === TeamRole.CREATOR) {
+      throw new BadRequestException('Cannot assign the CREATOR role');
+    }
+
+    // No-op when the role is unchanged — idempotent, return the row as-is.
+    if (member.teamRole === dto.teamRole) return member;
+
+    member.teamRole = dto.teamRole;
     return this.teamRepo.save(member);
   }
 

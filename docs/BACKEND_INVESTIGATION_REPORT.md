@@ -72,6 +72,7 @@ ADMIN | DETECTIVE | ANALYST
 | Reopen (closed → other status)      |   X   |           |         |
 | Archive case                        |   X   |           |         |
 | Add team member                     |   X   |     X     |         |
+| Update team member role             |   X   |     X     |         |
 | Read team                           |   X   |     X     |    X    |
 | Register involved person            |   X   |     X     |         |
 | Read involved persons               |   X   |     X     |    X    |
@@ -208,7 +209,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 
 `ManyToOne(Case, onDelete: 'CASCADE')`. There is no `updatedAt` column.
 
-**Rules:** `(caseId, userId)` must be unique. No "remove team member" endpoint exists.
+**Rules:** `(caseId, userId)` must be unique. Team members can be **added** (`POST /cases/:id/team`), **listed** (`GET /cases/:id/team`), and have their **role changed** (`PATCH /cases/:id/team/:userId` — only ever between `LEAD` and `MEMBER`; the `CREATOR` row is immutable). There is still **no "remove team member" endpoint**.
 
 ---
 
@@ -490,6 +491,7 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 | `PATCH /cases/:id/status`           |        |   X   |     X     |         |
 | `PATCH /cases/:id/archive`          |        |   X   |           |         |
 | `POST /cases/:id/team`              |        |   X   |     X     |         |
+| `PATCH /cases/:id/team/:userId`     |        |   X   |     X     |         |
 | `GET /cases/:id/team`               |        |   X   |     X     |    X    |
 | `POST /involved-persons`            |        |   X   |     X     |         |
 | `GET /involved-persons`, `/involved-persons/:id`, `/involved-persons/:id/cases` |  |   X   |     X     |    X    |
@@ -851,6 +853,25 @@ All routes require `Authorization: Bearer ...`.
 
 - **Response 201:** the new `CaseTeam` row.
 - **Errors:** `404` case missing; `409 Conflict` ("User is already a team member").
+
+#### `PATCH /cases/:id/team/:userId`
+- **Roles:** ADMIN, DETECTIVE (same as `POST /cases/:id/team`).
+- **Purpose:** change the role of an **existing** team member without removing and re-adding them (re-adding is impossible — `POST` 409s on the existing `(caseId, userId)` pair, and there is no delete route). In practice this only ever swaps a member between `LEAD` and `MEMBER`.
+- **Path params:** `id` (case UUID), `userId` (the team member's Keycloak sub — i.e. `case_team.user_id`).
+- **Body (`UpdateTeamMemberDto`):**
+
+  | Field      | Type          | Required | Validator                                  |
+  |------------|---------------|:--------:|--------------------------------------------|
+  | `teamRole` | enum TeamRole |   Yes    | `@IsNotEmpty @IsEnum(TeamRole)` — but the two CREATOR rules below are enforced in the service so messages are exact |
+
+- **Response 200:** the updated `CaseTeam` row (`{ caseId, userId, teamRole, linkedAt }`).
+- **Business rules:**
+  - **CREATOR is immutable provenance.** If the target member's current role is `CREATOR` → `400 "The case creator's role cannot be changed"`. No member may be assigned `CREATOR` via this route → `400 "Cannot assign the CREATOR role"`.
+  - **Closed-case consistency.** Mirrors `PUT /cases/:id`: a `CLOSED` case rejects with `400 "A closed case cannot be modified"`.
+  - **No-op is idempotent.** If `teamRole` equals the current value, returns `200` with the row unchanged (no 409, no write).
+  - Only the `team_role` column is written; the `(caseId, userId)` PK is untouched.
+- **Errors:** `400` (validation / CREATOR rules / closed case); `403` non ADMIN/DETECTIVE; `404` (`Case ... not found` if the case is missing, `"Team member not found"` if the `(caseId, userId)` pair is missing).
+- **Events:** none — team edits are event-free (no `case.team.*` event exists).
 
 #### `GET /cases/:id/team`
 - **Roles:** ADMIN, DETECTIVE, ANALYST.
