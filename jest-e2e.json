@@ -1,0 +1,20 @@
+{
+  "moduleFileExtensions": ["js", "json", "ts"],
+  "rootDir": ".",
+  "testRegex": ".*\\.e2e-spec\\.ts$",
+  "transform": {
+    "^.+\\.(t|j)s$": "ts-jest"
+  },
+  "testEnvironment": "node",
+  "testTimeout": 120000,
+  "maxWorkers": 1,
+  "roots": ["<rootDir>/test/", "<rootDir>/apps/"],
+  "moduleNameMapper": {
+    "^@aegiscase/common(|/.*)$": "<rootDir>/libs/common/src/$1",
+    "^@aegiscase/auth(|/.*)$": "<rootDir>/libs/auth/src/$1",
+    "^@aegiscase/dto(|/.*)$": "<rootDir>/libs/dto/src/$1",
+    "^@aegiscase/enums(|/.*)$": "<rootDir>/libs/enums/src/$1",
+    "^@aegiscase/events(|/.*)$": "<rootDir>/libs/events/src/$1",
+    "^@aegiscase/database(|/.*)$": "<rootDir>/libs/database/src/$1"
+  }
+}
