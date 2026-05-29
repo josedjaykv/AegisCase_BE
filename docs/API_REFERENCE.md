@@ -98,12 +98,19 @@ Use the **Authorize** button (top right) in any Swagger UI to paste a bearer tok
 
 Base path: `/users`
 
-| Method | Path             | Roles                       | Purpose                |
-|--------|------------------|-----------------------------|------------------------|
-| POST   | `/users`         | ADMIN                       | Create user            |
-| GET    | `/users`         | ADMIN                       | List users (paginated) |
-| GET    | `/users/:id`     | ADMIN, DETECTIVE, ANALYST   | Get user by ID         |
-| PUT    | `/users/:id`     | ADMIN                       | Update user            |
+| Method | Path                       | Roles                       | Purpose                                                                          |
+|--------|----------------------------|-----------------------------|----------------------------------------------------------------------------------|
+| POST   | `/users`                   | ADMIN                       | Create user                                                                      |
+| GET    | `/users`                   | ADMIN                       | List users (paginated)                                                           |
+| GET    | `/users/directory`         | ADMIN, DETECTIVE, ANALYST   | Resolve Keycloak `sub`s → `{ keycloakUserId, firstNames, lastNames, role }[]`    |
+| GET    | `/users/by-keycloak-ids`   | ADMIN                       | Internal lookup → `{ id, keycloakUserId }[]` (do not widen — PII gate)           |
+| GET    | `/users/:id`               | ADMIN, DETECTIVE, ANALYST   | Get user by ID                                                                   |
+| PUT    | `/users/:id`               | ADMIN                       | Update user                                                                      |
+
+`GET /users/directory` is the all-roles, PII-free way to render people by name in the FE
+(case team, leader, task assignee, evidence custodian). Hard cap **100 ids per call**; unknown
+subs are silently omitted (no 404). See `apps/user-service/README.md` for the rationale for
+keeping it separate from `by-keycloak-ids`.
 
 ---
 

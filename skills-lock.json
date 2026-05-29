@@ -7,6 +7,30 @@
       "skillPath": "plugins/backend-development/skills/api-design-principles/SKILL.md",
       "computedHash": "3316239df2bdcb41e992857b8142e0239e6964564dd5d7224e470c2ab350a03c"
     },
+    "api-documentation-generator": {
+      "source": "sickn33/antigravity-awesome-skills",
+      "sourceType": "github",
+      "skillPath": "skills/api-documentation-generator/SKILL.md",
+      "computedHash": "aedba614a1b82f897a54b77322c26c8707a1c25ed374386b8a57cf3731a68c65"
+    },
+    "api-testing-patterns": {
+      "source": "proffesor-for-testing/agentic-qe",
+      "sourceType": "github",
+      "skillPath": ".claude/skills/api-testing-patterns/SKILL.md",
+      "computedHash": "ea8fed5a0940d7e6c14de99d74641c58986ab7523cc34d533168c38303477a51"
+    },
+    "better-auth-best-practices": {
+      "source": "better-auth/skills",
+      "sourceType": "github",
+      "skillPath": "better-auth/best-practices/SKILL.md",
+      "computedHash": "a4c830509e85557b59339d8d93a4e243e9e59c686e7678854d39230e12c2a6dc"
+    },
+    "documentation-writer": {
+      "source": "github/awesome-copilot",
+      "sourceType": "github",
+      "skillPath": "skills/documentation-writer/SKILL.md",
+      "computedHash": "ee53d65b163cd7eb953a930c95841cfe398cc2c0bd24c06508bbaa07c432be35"
+    },
     "error-handling-patterns": {
       "source": "wshobson/agents",
       "sourceType": "github",
@@ -42,6 +66,12 @@
       "sourceType": "github",
       "skillPath": "skills/.curated/security-best-practices/SKILL.md",
       "computedHash": "c27616fb4e27999605b90b261dc729784420c8d77bd1a98748384ffaa5b35704"
+    },
+    "webapp-testing": {
+      "source": "anthropics/skills",
+      "sourceType": "github",
+      "skillPath": "skills/webapp-testing/SKILL.md",
+      "computedHash": "ad5b1fc52807e9afa4635e59218a026b164dc58b6c3f41b0f7c644dcd6ccf572"
     }
   }
 }
