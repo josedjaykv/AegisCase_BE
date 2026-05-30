@@ -3,6 +3,8 @@ import {
   Get,
   Post,
   Put,
+  Patch,
+  Delete,
   Body,
   Param,
   Query,
@@ -14,6 +16,7 @@ import { InvolvedService } from './involved.service';
 import { CreateInvolvedPersonDto } from './dto/create-involved-person.dto';
 import { UpdateInvolvedPersonDto } from './dto/update-involved-person.dto';
 import { LinkToCaseDto } from './dto/link-to-case.dto';
+import { UpdateCaseLinkDto } from './dto/update-case-link.dto';
 import { Roles } from '@aegiscase/auth';
 import { CurrentUser, JwtPayload } from '@aegiscase/common';
 import { UserRole } from '@aegiscase/enums';
@@ -39,6 +42,15 @@ export class InvolvedController {
   async findAll(@Query() pagination: PaginationDto) {
     const [data, total] = await this.involvedService.findAll(pagination);
     return { data, total, page: pagination.page ?? 1, limit: pagination.limit ?? 20 };
+  }
+
+  @Get('by-case/:caseId')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({
+    summary: 'Roster of involved persons for a case (ADMIN, DETECTIVE, ANALYST)',
+  })
+  findByCase(@Param('caseId') caseId: string) {
+    return this.involvedService.findByCase(caseId);
   }
 
   @Get(':id')
@@ -73,5 +85,27 @@ export class InvolvedController {
   @ApiOperation({ summary: 'List cases an involved person is linked to' })
   getCaseLinks(@Param('id') id: string) {
     return this.involvedService.getCaseLinks(id);
+  }
+
+  @Patch(':id/cases/:caseId')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
+  @ApiOperation({ summary: 'Edit a case ↔ involved-person link (ADMIN, DETECTIVE)' })
+  updateLink(
+    @Param('id') id: string,
+    @Param('caseId') caseId: string,
+    @Body() dto: UpdateCaseLinkDto,
+  ) {
+    return this.involvedService.updateLink(id, caseId, dto);
+  }
+
+  @Delete(':id/cases/:caseId')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE)
+  @ApiOperation({ summary: 'Unlink an involved person from a case (ADMIN, DETECTIVE)' })
+  removeLink(
+    @Param('id') id: string,
+    @Param('caseId') caseId: string,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.involvedService.removeLink(id, caseId, user);
   }
 }

@@ -6,6 +6,7 @@ import {
   INVESTIGATION_EXCHANGE,
   getRmqUrl,
   InvolvedPersonLinkedEvent,
+  InvolvedPersonUnlinkedEvent,
 } from '@aegiscase/events';
 
 @Injectable()
@@ -39,6 +40,22 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     this.publish(EventPatterns.INVOLVED_PERSON_LINKED, {
       event_id: uuidv4(),
       event_type: 'involved.person.linked',
+      occurred_at: new Date(),
+      actor_user_id: actorUserId,
+      entity_type: 'InvolvedPerson',
+      entity_id: involvedPersonId,
+      payload,
+    });
+  }
+
+  publishInvolvedPersonUnlinked(
+    actorUserId: string,
+    involvedPersonId: string,
+    payload: InvolvedPersonUnlinkedEvent['payload'],
+  ): void {
+    this.publish(EventPatterns.INVOLVED_PERSON_UNLINKED, {
+      event_id: uuidv4(),
+      event_type: 'involved.person.unlinked',
       occurred_at: new Date(),
       actor_user_id: actorUserId,
       entity_type: 'InvolvedPerson',

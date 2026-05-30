@@ -78,6 +78,8 @@ ADMIN | DETECTIVE | ANALYST
 | Read involved persons               |   X   |     X     |    X    |
 | Update involved persons             |   X   |     X     |         |
 | Link involved to case               |   X   |     X     |         |
+| Read case roster (by-case)          |   X   |     X     |    X    |
+| Edit / unlink involved-case link    |   X   |     X     |         |
 | Register evidence                   |   X   |     X     |         |
 | Read evidence                       |   X   |     X     |    X    |
 | Update evidence                     |   X   |     X     |         |
@@ -248,7 +250,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 | `involvementType`   | `involvementType`     | `involvement_type`     | enum InvolvementType|    No    | `VICTIM \| SUSPECT \| WITNESS \| OTHER`        |
 | `observations`      | `observations`        | `observations`         | text                |   Yes    |                                              |
 
-**Rules:** `(caseId, involvedPersonId)` is unique. Linking the same person twice to the same case fails with `409 Conflict`. There is no "unlink" endpoint.
+**Rules:** `(caseId, involvedPersonId)` is unique. Linking the same person twice to the same case fails with `409 Conflict`. The link is now **editable** (`PATCH /involved-persons/:id/cases/:caseId` — `involvement_type` / `observations` only; the PK is never touched) and **deletable** (`DELETE /involved-persons/:id/cases/:caseId` — a **hard delete** of the join row; the `involved_persons` and `cases` rows are untouched). The reverse lookup is exposed via `GET /involved-persons/by-case/:caseId` (case roster). See §5.5.
 
 ---
 
@@ -406,6 +408,7 @@ Append-only by convention — no update or delete code paths reference this enti
 | `case.closed`               | `CASE_CLOSED`                  |
 | `case.archived`             | `CASE_ARCHIVED`                |
 | `involved.person.linked`    | `INVOLVED_PERSON_LINKED`       |
+| `involved.person.unlinked`  | `INVOLVED_PERSON_UNLINKED`     |
 | `evidence.added`            | `EVIDENCE_ADDED`               |
 | `evidence.transferred`      | `EVIDENCE_CUSTODY_TRANSFERRED` |
 | `evidence.archived`         | `EVIDENCE_ARCHIVED`            |
@@ -494,9 +497,11 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 | `PATCH /cases/:id/team/:userId`     |        |   X   |     X     |         |
 | `GET /cases/:id/team`               |        |   X   |     X     |    X    |
 | `POST /involved-persons`            |        |   X   |     X     |         |
-| `GET /involved-persons`, `/involved-persons/:id`, `/involved-persons/:id/cases` |  |   X   |     X     |    X    |
+| `GET /involved-persons`, `/involved-persons/:id`, `/involved-persons/:id/cases`, `/involved-persons/by-case/:caseId` |  |   X   |     X     |    X    |
 | `PUT /involved-persons/:id`         |        |   X   |     X     |         |
 | `POST /involved-persons/:id/cases/:caseId` |  |   X   |     X     |         |
+| `PATCH /involved-persons/:id/cases/:caseId` |  |   X   |     X     |         |
+| `DELETE /involved-persons/:id/cases/:caseId` | |   X   |     X     |         |
 | `POST /evidence`                    |        |   X   |     X     |         |
 | `GET /evidence` (list/get/coc)      |        |   X   |     X     |    X    |
 | `PUT /evidence/:id`                 |        |   X   |     X     |         |
@@ -532,6 +537,12 @@ Auth-service routes are reachable both directly on `http://localhost:3001` and t
 | `/tasks`            | task-service          | 3006          |
 | `/media`            | media-service         | 3007          |
 | `/audit`            | audit-service         | 3008          |
+
+Because routing is by URL prefix, the Feature 004 case roster ships as
+`GET /involved-persons/by-case/:caseId` (under the `/involved-persons` prefix → involved-service)
+rather than `GET /cases/:id/involved`, which the gateway would route to case-service. The
+`PATCH` and `DELETE` link routes sit under the same `/involved-persons` prefix and need no gateway
+change.
 
 Every service additionally exposes Swagger UI on its own port at `/api/docs`.
 
@@ -930,6 +941,59 @@ All routes require `Authorization: Bearer ...`.
 - **Roles:** all three.
 - **Response 200:** `CaseInvolvedPerson[]` for the given person.
 
+#### `GET /involved-persons/by-case/:caseId`
+- **Feature 004.** Case roster — the reverse of `GET /involved-persons/:id/cases`.
+- **Roles:** all three (ADMIN, DETECTIVE, ANALYST).
+- **Response 200:** array (empty `[]`, not `404`, when the case has no links). Each row embeds a
+  minimal `person` projection so the FE avoids an N+1 to resolve names:
+
+  ```json
+  [
+    {
+      "caseId": "...",
+      "involvedPersonId": "...",
+      "involvementType": "VICTIM | SUSPECT | WITNESS | OTHER",
+      "observations": "..." ,
+      "person": { "id": "...", "firstNames": "...", "lastNames": "...", "document": "..." }
+    }
+  ]
+  ```
+- **Note:** the `caseId` is **not** verified (consistent with the rest of involved-service —
+  unknown id → `[]`). Read-only, publishes no events.
+- **Path rationale:** the gateway reserves `cases*` for case-service, so the roster ships under
+  the `involved-persons*` namespace as `by-case/:caseId` (declared **before** `:id` so it is not
+  shadowed). The FE matches this exact path.
+
+#### `PATCH /involved-persons/:id/cases/:caseId`
+- **Feature 004.** Edit an existing case ↔ involved-person link. Partial update; only
+  `involvement_type` / `observations` are writable — the composite PK is never touched.
+- **Roles:** ADMIN, DETECTIVE (same as the `POST` link route).
+- **Body (`UpdateCaseLinkDto`, at least one field):**
+
+  | Field             | Type                | Required | Validator                                                |
+  |-------------------|---------------------|:--------:|----------------------------------------------------------|
+  | `involvementType` | enum InvolvementType|    No    | `@IsEnum(InvolvementType)` — msg "involvementType must be a valid type" |
+  | `observations`    | string              |    No    | `@IsString`                                              |
+
+- **Response 200:** the updated join row `{ caseId, involvedPersonId, involvementType, observations }`.
+- **Idempotent:** sending the current value returns `200` unchanged (no `409`).
+- **Errors:** `400 "At least one field is required"` (empty body); `400 "involvementType must be a
+  valid type"` (bad enum); `403` (non ADMIN/DETECTIVE); `404 "Person not found"` (person id
+  missing); `404 "Link not found"` (the `(caseId, involvedPersonId)` pair missing).
+- **Note:** the `caseId` is **not** verified. Publishes no events.
+
+#### `DELETE /involved-persons/:id/cases/:caseId`
+- **Feature 004.** Unlink — a **hard delete** of the `case_involved_persons` row. The
+  `involved_persons` and `cases` rows are untouched. This is the **first physical delete exposed
+  for this join table**; there is no soft-delete column, so a physical delete is correct.
+- **Roles:** ADMIN, DETECTIVE.
+- **Response 200:** `{ "success": true }`.
+- **Side effects:** publishes `involved.person.unlinked` (routing-key parity with
+  `involved.person.linked`; payload `{ case_id, involved_person_id }`). Audited as
+  `INVOLVED_PERSON_UNLINKED`.
+- **Errors:** `403` (non ADMIN/DETECTIVE); `404 "Link not found"` (the pair missing — deleting a
+  non-existent link does **not** silently `200`).
+
 ---
 
 ### 5.6 Evidence (`evidence-service`)
@@ -1293,6 +1357,7 @@ The audit-service is the only consumer in V1. Every domain service publishes eve
 | `case.closed`               | `case.closed`              | case-service    | `case_code`, `closed_by_user_id`                                                     |
 | `case.archived`             | `case.archived`            | case-service    | `case_code`, `archived_by_user_id`                                                   |
 | `involved.person.linked`    | `involved.person.linked`   | involved-service| `case_id`, `involved_person_id`, `involvement_type`                                  |
+| `involved.person.unlinked`  | `involved.person.unlinked` | involved-service| `case_id`, `involved_person_id`                                                      |
 | `evidence.added`            | `evidence.added`           | evidence-service| `case_id`, `evidence_type`, `custodian_user_id`                                      |
 | `evidence.transferred`      | `evidence.transferred`     | evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `transfer_reason?`           |
 | `evidence.archived`         | `evidence.archived`        | evidence-service| `case_id`, `archived_by_user_id`                                                     |
@@ -1839,9 +1904,12 @@ The items below are points where the implementation diverges from the project do
 
 - The `UpdateTaskDto` exposes `assignedToUserId`. The service only checks that the *current* `assignedToUserId === actor.sub`. After a successful update reassigning it away, the analyst can no longer modify the task. This may be intentional (delegation) but is not documented.
 
-### 17.18 No "remove team member" or "unlink involved person" endpoints
+### 17.18 No "remove team member" endpoint
 
-- Once added, team membership and case-involved-person links can only be removed via direct DB intervention.
+- Once added, **team membership** (`case_team`) can only be removed via direct DB intervention.
+- ~~case-involved-person links~~ — **superseded by Feature 004.** Case-involved-person links are
+  now editable (`PATCH`) and removable (`DELETE`) via the API; see §5.5. A `DELETE` performs a
+  hard delete of the join row.
 
 ### 17.19 No idempotency keys on writes
 

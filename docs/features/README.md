@@ -16,3 +16,4 @@ implementación, las pruebas y la documentación relacionada.
 |---|---------|----------|--------|-------|
 | [001](001-users-directory-endpoint.md) | `GET /users/directory` — resolución de Keycloak subs a nombres (todos los roles) | `user-service` | Implementado | 2026-05-29 |
 | [002](002-update-case-team-member-role.md) | `PATCH /cases/:id/team/:userId` — cambiar el rol de un miembro del equipo | `case-service` | Implementado | 2026-05-29 |
+| [004](004-case-involved-link-management.md) | Gestión del vínculo caso ↔ persona: roster, editar y desvincular | `involved-service` | Implementado | 2026-05-29 |
