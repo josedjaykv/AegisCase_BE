@@ -146,6 +146,9 @@ Base path: `/involved-persons`
 | PUT    | `/involved-persons/:id`               | ADMIN, DETECTIVE            | Update person              |
 | POST   | `/involved-persons/:id/cases/:caseId` | ADMIN, DETECTIVE            | Link person to case        |
 | GET    | `/involved-persons/:id/cases`         | ADMIN, DETECTIVE, ANALYST   | List cases linked          |
+| GET    | `/involved-persons/by-case/:caseId`   | ADMIN, DETECTIVE, ANALYST   | Case roster (embeds person)|
+| PATCH  | `/involved-persons/:id/cases/:caseId` | ADMIN, DETECTIVE            | Edit link (type/observations) |
+| DELETE | `/involved-persons/:id/cases/:caseId` | ADMIN, DETECTIVE            | Unlink (hard delete of join)|
 
 ---
 

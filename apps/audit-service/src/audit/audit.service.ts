@@ -10,7 +10,8 @@ const ACTION_MAP: Record<string, string> = {
   'case.updated':           'CASE_UPDATED',
   'case.closed':            'CASE_CLOSED',
   'case.archived':          'CASE_ARCHIVED',
-  'involved.person.linked': 'INVOLVED_PERSON_LINKED',
+  'involved.person.linked':   'INVOLVED_PERSON_LINKED',
+  'involved.person.unlinked': 'INVOLVED_PERSON_UNLINKED',
   'evidence.added':         'EVIDENCE_ADDED',
   'evidence.transferred':   'EVIDENCE_CUSTODY_TRANSFERRED',
   'evidence.archived':      'EVIDENCE_ARCHIVED',
@@ -156,6 +157,12 @@ export class AuditService {
         return {
           previousState: null,
           newState: { case_id: p.case_id, involvement_type: p.involvement_type },
+        };
+
+      case 'involved.person.unlinked':
+        return {
+          previousState: { case_id: p.case_id, linked: true },
+          newState: { case_id: p.case_id, linked: false },
         };
 
       case 'media.uploaded':

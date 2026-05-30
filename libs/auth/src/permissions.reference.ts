@@ -59,6 +59,11 @@ export const PERMISSION_MATRIX = {
     read:    [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
     update:  [UserRole.ADMIN, UserRole.DETECTIVE],
     link:    [UserRole.ADMIN, UserRole.DETECTIVE],
+    // GET /involved-persons/by-case/:caseId — case roster, read for all roles.
+    readByCase:  [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
+    // PATCH/DELETE /involved-persons/:id/cases/:caseId — edit/unlink the join row.
+    updateLink:  [UserRole.ADMIN, UserRole.DETECTIVE],
+    unlink:      [UserRole.ADMIN, UserRole.DETECTIVE],
   },
 
   // ── Users ────────────────────────────────────────────────────────────────

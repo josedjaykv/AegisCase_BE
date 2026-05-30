@@ -13,7 +13,8 @@ export const EventPatterns = {
   TASK_COMPLETED:          'task.completed',
   TASK_OVERDUE:            'task.overdue',
   // Involved
-  INVOLVED_PERSON_LINKED:  'involved.person.linked',
+  INVOLVED_PERSON_LINKED:   'involved.person.linked',
+  INVOLVED_PERSON_UNLINKED: 'involved.person.unlinked',
   // Media
   MEDIA_UPLOADED:          'media.uploaded',
 } as const;

@@ -8,3 +8,11 @@ export interface InvolvedPersonLinkedEvent extends BaseEvent {
     involvement_type: string;
   };
 }
+
+export interface InvolvedPersonUnlinkedEvent extends BaseEvent {
+  event_type: 'involved.person.unlinked';
+  payload: {
+    case_id: string;
+    involved_person_id: string;
+  };
+}
