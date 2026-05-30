@@ -277,7 +277,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 
 **Business rules (`EvidenceService`):**
 - `create`: sets `evidenceStatus = REGISTERED`, `currentCustodianId = dto.currentCustodianId ?? actor.sub`, then inserts the **initial** chain-of-custody row with `previousCustodianId = null` and `transferReason = "Initial registration"`. Publishes `evidence.added`.
-- `findOne(id, actor, trackView = true)`: appends a `chain_of_custody` row with `transferReason = "Viewed by user"`, mutates `currentCustodianId = actor.sub`, then returns the entity. **This is the "view = take responsibility" side effect.**
+- `findOne(id, actor, trackView = true)`: appends a `chain_of_custody` row with `transferReason = "Viewed by user"`, mutates `currentCustodianId = actor.sub`, then returns the reloaded entity (with `custodyChain`). **This is the "view = take responsibility" side effect.** The COC insert and the `currentCustodianId` update run in a **single DB transaction** — either both persist or neither does (see Fix 001). **Idempotent self-view:** if the actor is *already* the current custodian (e.g. a UI refresh), no new row is appended and no update runs; a view by a *different* user still records.
 - `update`: no business-status guard — patches the fields provided. **Note:** unlike `Case`, there is no "archived guard" — an archived evidence is still mutable via `PUT /evidence/:id`.
 - `transferCustody`: appends a chain-of-custody row (`previousCustodianId = current`, `newCustodianId = dto.newCustodianId`); sets `evidenceStatus = TRANSFERRED`; publishes `evidence.transferred`.
 - `archive`: `409 Conflict` if already archived; sets `archived = true`, `archivedAt = now`, `evidenceStatus = ARCHIVED`; publishes `evidence.archived`.
@@ -1019,8 +1019,9 @@ All routes require `Authorization: Bearer ...`.
 
 #### `GET /evidence/:id`
 - **Roles:** all three.
-- **WARNING — Side effect:** issuing this request adds a `chain_of_custody` row with `transferReason="Viewed by user"` and updates `currentCustodianId = actor.sub`. **The viewer becomes the custodian of record.**
-- **Response 200:** the `Evidence` entity with `custodyChain: ChainOfCustody[]` populated (and now containing the just-inserted "Viewed by user" row).
+- **WARNING — Side effect:** issuing this request adds a `chain_of_custody` row with `transferReason="Viewed by user"` and updates `currentCustodianId = actor.sub`. **The viewer becomes the custodian of record.** The insert + update are **atomic** (single transaction — Fix 001).
+- **Idempotent self-view:** if the caller is already the current custodian, the request is a pure read — no new COC row and no custodian change. A view by a different user records as usual.
+- **Response 200:** the `Evidence` entity with `custodyChain: ChainOfCustody[]` populated (and containing the just-inserted "Viewed by user" row, when one was recorded).
 - The frontend should display a warning dialog before calling this endpoint.
 
 #### `PUT /evidence/:id`
