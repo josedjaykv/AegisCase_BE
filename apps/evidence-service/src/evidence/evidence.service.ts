@@ -4,7 +4,7 @@ import {
   ConflictException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { Evidence } from './evidence.entity';
 import { ChainOfCustody } from './chain-of-custody.entity';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
@@ -22,6 +22,7 @@ export class EvidenceService {
     private readonly evidenceRepo: Repository<Evidence>,
     @InjectRepository(ChainOfCustody)
     private readonly custodyRepo: Repository<ChainOfCustody>,
+    private readonly dataSource: DataSource,
     private readonly events: EventPublisherService,
   ) {}
 
@@ -65,27 +66,46 @@ export class EvidenceService {
   }
 
   async findOne(id: string, actor: JwtPayload, trackView = true): Promise<Evidence> {
-    const evidence = await this.evidenceRepo.findOne({
-      where: { id },
-      relations: ['custodyChain'],
-    });
-    if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+    if (!trackView) {
+      const evidence = await this.evidenceRepo.findOne({
+        where: { id },
+        relations: ['custodyChain'],
+      });
+      if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+      return evidence;
+    }
 
-    if (trackView) {
-      await this.custodyRepo.save(
-        this.custodyRepo.create({
+    // "View = take custody". The COC insert and the custodian update MUST be
+    // atomic — a "Viewed by user" row without the matching custodian update is
+    // a corrupt chain of custody. Both writes run in one transaction so any
+    // failure rolls back the whole side effect (see fix 001).
+    return this.dataSource.transaction(async (manager) => {
+      const evidence = await manager.findOne(Evidence, { where: { id } });
+      if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+
+      // Idempotent self-view: don't spam the chain when the viewer already holds
+      // custody (e.g. a UI refresh). A view by a *different* user still records.
+      if (evidence.currentCustodianId !== actor.sub) {
+        await manager.insert(ChainOfCustody, {
           evidenceId: id,
           previousCustodianId: evidence.currentCustodianId,
           newCustodianId: actor.sub,
           transferredByUserId: actor.sub,
           transferReason: 'Viewed by user',
-        }),
-      );
-      evidence.currentCustodianId = actor.sub;
-      await this.evidenceRepo.save(evidence);
-    }
+        });
+        await manager.update(Evidence, { id }, { currentCustodianId: actor.sub });
+      }
 
-    return evidence;
+      // Reload with the relation so the response carries an up-to-date
+      // custodyChain. Loading via `relations` (not cascade save) avoids the
+      // circular evidence <-> custodyChain back-reference that broke
+      // serialization in the previous implementation.
+      const fresh = await manager.findOne(Evidence, {
+        where: { id },
+        relations: ['custodyChain'],
+      });
+      return fresh as Evidence;
+    });
   }
 
   async update(id: string, dto: UpdateEvidenceDto, actor: JwtPayload): Promise<Evidence> {

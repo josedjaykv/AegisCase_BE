@@ -1,7 +1,7 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
 import { ConflictException, NotFoundException } from '@nestjs/common';
-import { Repository } from 'typeorm';
+import { DataSource, Repository } from 'typeorm';
 import { EvidenceService } from './evidence.service';
 import { Evidence } from './evidence.entity';
 import { ChainOfCustody } from './chain-of-custody.entity';
@@ -19,6 +19,20 @@ const mockRepo = <T>(): Mocked<Repository<T>> =>
     findAndCount: jest.fn(),
     find: jest.fn(),
   }) as any;
+
+// Fake EntityManager used inside dataSource.transaction(cb)
+type FakeManager = {
+  findOne: jest.Mock;
+  insert: jest.Mock;
+  update: jest.Mock;
+};
+
+const mockDataSource = (manager: FakeManager): { ds: Mocked<DataSource>; manager: FakeManager } => {
+  const ds = {
+    transaction: jest.fn(async (cb: (m: FakeManager) => Promise<unknown>) => cb(manager)),
+  } as any;
+  return { ds, manager };
+};
 
 const mockEvents = (): Mocked<EventPublisherService> =>
   ({
@@ -40,17 +54,22 @@ describe('EvidenceService', () => {
   let evidenceRepo: Mocked<Repository<Evidence>>;
   let custodyRepo: Mocked<Repository<ChainOfCustody>>;
   let events: Mocked<EventPublisherService>;
+  let manager: FakeManager;
+  let dataSource: Mocked<DataSource>;
 
   beforeEach(async () => {
     evidenceRepo = mockRepo<Evidence>();
     custodyRepo = mockRepo<ChainOfCustody>();
     events = mockEvents();
+    manager = { findOne: jest.fn(), insert: jest.fn(), update: jest.fn() };
+    ({ ds: dataSource } = mockDataSource(manager));
 
     const module = await Test.createTestingModule({
       providers: [
         EvidenceService,
         { provide: getRepositoryToken(Evidence), useValue: evidenceRepo },
         { provide: getRepositoryToken(ChainOfCustody), useValue: custodyRepo },
+        { provide: DataSource, useValue: dataSource },
         { provide: EventPublisherService, useValue: events },
       ],
     }).compile();
@@ -118,36 +137,73 @@ describe('EvidenceService', () => {
   });
 
   describe('findOne', () => {
-    it('appends a "viewed by user" custody row and updates currentCustodianId when trackView=true', async () => {
-      const existing = {
-        id: 'ev-1',
-        currentCustodianId: 'user-2',
-        custodyChain: [],
-      } as any;
-      evidenceRepo.findOne.mockResolvedValueOnce(existing);
+    it('inserts a "viewed by user" row and updates currentCustodianId atomically, then returns the reloaded entity with custodyChain', async () => {
+      // 1st findOne (inside tx): current state. 2nd findOne: reload after the writes.
+      manager.findOne
+        .mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'user-2' })
+        .mockResolvedValueOnce({
+          id: 'ev-1',
+          currentCustodianId: 'user-1',
+          custodyChain: [{ id: 'r1', newCustodianId: 'user-1', transferReason: 'Viewed by user' }],
+        });
 
       const result: any = await service.findOne('ev-1', actor());
 
-      expect(custodyRepo.create).toHaveBeenCalledWith(
+      // Both writes go through the same transactional manager (atomic)
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+      expect(manager.insert).toHaveBeenCalledWith(
+        ChainOfCustody,
         expect.objectContaining({
+          evidenceId: 'ev-1',
           previousCustodianId: 'user-2',
           newCustodianId: 'user-1',
+          transferredByUserId: 'user-1',
           transferReason: 'Viewed by user',
         }),
       );
-      expect(evidenceRepo.save).toHaveBeenCalled();
+      expect(manager.update).toHaveBeenCalledWith(
+        Evidence,
+        { id: 'ev-1' },
+        { currentCustodianId: 'user-1' },
+      );
+      // Response carries the reloaded entity + custodyChain (regression for the 500)
+      expect(result.currentCustodianId).toBe('user-1');
+      expect(result.custodyChain).toHaveLength(1);
+    });
+
+    it('is idempotent for self-views: no new row / no update when the actor already holds custody', async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'user-1' })
+        .mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'user-1', custodyChain: [] });
+
+      const result: any = await service.findOne('ev-1', actor());
+
+      expect(manager.insert).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
       expect(result.currentCustodianId).toBe('user-1');
     });
 
-    it('does not append custody rows when trackView=false', async () => {
+    it('rolls back the whole side effect when the reload throws (atomicity)', async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'user-2' })
+        .mockRejectedValueOnce(new Error('reload boom'));
+
+      await expect(service.findOne('ev-1', actor())).rejects.toThrow('reload boom');
+      // The insert/update happened inside the transaction; the rejection propagates
+      // out of dataSource.transaction so the real DB tx rolls both back.
+      expect(dataSource.transaction).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not open a transaction or append custody rows when trackView=false', async () => {
       evidenceRepo.findOne.mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'u' } as any);
-      await service.findOne('ev-1', actor(), false);
-      expect(custodyRepo.create).not.toHaveBeenCalled();
-      expect(evidenceRepo.save).not.toHaveBeenCalled();
+      const result: any = await service.findOne('ev-1', actor(), false);
+      expect(dataSource.transaction).not.toHaveBeenCalled();
+      expect(manager.insert).not.toHaveBeenCalled();
+      expect(result.id).toBe('ev-1');
     });
 
     it('throws NotFoundException when missing', async () => {
-      evidenceRepo.findOne.mockResolvedValueOnce(null);
+      manager.findOne.mockResolvedValueOnce(null);
       await expect(service.findOne('ev-1', actor())).rejects.toBeInstanceOf(NotFoundException);
     });
   });
