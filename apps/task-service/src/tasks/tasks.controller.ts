@@ -25,6 +25,10 @@ class TaskFilterDto extends PaginationDto {
   @IsOptional()
   @IsUUID()
   assignedToUserId?: string;
+
+  @IsOptional()
+  @IsUUID()
+  caseId?: string;
 }
 
 @ApiTags('Tasks')
@@ -43,10 +47,10 @@ export class TasksController {
 
   @Get()
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
-  @ApiOperation({ summary: 'List tasks (optionally filtered by assignedToUserId)' })
+  @ApiOperation({ summary: 'List tasks (optionally filtered by caseId and/or assignedToUserId)' })
   async findAll(@Query() query: TaskFilterDto) {
-    const { assignedToUserId, ...pagination } = query;
-    const [data, total] = await this.tasksService.findAll(pagination, assignedToUserId);
+    const { assignedToUserId, caseId, ...pagination } = query;
+    const [data, total] = await this.tasksService.findAll(pagination, assignedToUserId, caseId);
     return { data, total, page: pagination.page ?? 1, limit: pagination.limit ?? 20 };
   }
 
