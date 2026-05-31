@@ -117,6 +117,51 @@ describe('EvidenceService', () => {
       expect(events.publishEvidenceAdded).toHaveBeenCalled();
     });
 
+    it('persists the optional title and includes it in the evidence.added event', async () => {
+      const persisted: Evidence = {
+        id: 'ev-1',
+        caseId: 'case-1',
+        evidenceType: EvidenceType.TESTIMONIAL,
+        title: 'Testimonio de Juanito',
+        currentCustodianId: 'user-1',
+      } as any;
+      evidenceRepo.save.mockResolvedValueOnce(persisted);
+      evidenceRepo.findOne.mockResolvedValueOnce(persisted);
+
+      await service.create(
+        {
+          caseId: 'case-1',
+          evidenceType: EvidenceType.TESTIMONIAL,
+          title: 'Testimonio de Juanito',
+          description: 'long testimony text',
+        },
+        actor(),
+      );
+
+      expect(evidenceRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: 'Testimonio de Juanito' }),
+      );
+      expect(events.publishEvidenceAdded).toHaveBeenCalledWith(
+        'user-1',
+        'ev-1',
+        expect.objectContaining({ title: 'Testimonio de Juanito' }),
+      );
+    });
+
+    it('stores title = null when omitted (backward-compatible)', async () => {
+      evidenceRepo.save.mockResolvedValueOnce({ id: 'ev-1' } as any);
+      evidenceRepo.findOne.mockResolvedValueOnce({ id: 'ev-1' } as any);
+
+      await service.create(
+        { caseId: 'case-1', evidenceType: EvidenceType.PHYSICAL, description: 'gun' },
+        actor(),
+      );
+
+      expect(evidenceRepo.create).toHaveBeenCalledWith(
+        expect.objectContaining({ title: null }),
+      );
+    });
+
     it('honors an explicit currentCustodianId in the DTO', async () => {
       evidenceRepo.save.mockResolvedValueOnce({ id: 'ev-1' } as any);
       evidenceRepo.findOne.mockResolvedValueOnce({ id: 'ev-1' } as any);

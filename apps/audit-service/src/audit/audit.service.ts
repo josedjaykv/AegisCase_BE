@@ -122,7 +122,7 @@ export class AuditService {
       case 'evidence.added':
         return {
           previousState: null,
-          newState: { case_id: p.case_id, evidence_type: p.evidence_type, custodian_user_id: p.custodian_user_id, status: 'REGISTERED' },
+          newState: { case_id: p.case_id, evidence_type: p.evidence_type, custodian_user_id: p.custodian_user_id, title: p.title, status: 'REGISTERED' },
         };
 
       case 'evidence.transferred':

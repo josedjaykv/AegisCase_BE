@@ -32,6 +32,7 @@ export class EvidenceService {
   async create(dto: CreateEvidenceDto, actor: JwtPayload): Promise<Evidence> {
     const evidence = this.evidenceRepo.create({
       ...dto,
+      title: dto.title ?? null,
       createdByUserId: actor.sub,
       evidenceStatus: EvidenceStatus.REGISTERED,
       currentCustodianId: dto.currentCustodianId ?? actor.sub,
@@ -53,6 +54,7 @@ export class EvidenceService {
       case_id: created.caseId,
       evidence_type: created.evidenceType,
       custodian_user_id: created.currentCustodianId ?? actor.sub,
+      title: created.title ?? undefined,
     });
     return created;
   }

@@ -4,6 +4,7 @@ import {
   IsOptional,
   IsUUID,
   IsNotEmpty,
+  MaxLength,
 } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { EvidenceType } from '@aegiscase/enums';
@@ -16,6 +17,12 @@ export class CreateEvidenceDto {
   @ApiProperty({ enum: EvidenceType })
   @IsEnum(EvidenceType)
   evidenceType: EvidenceType;
+
+  @ApiPropertyOptional({ description: 'Short title / heading (≤200 chars)' })
+  @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  title?: string;
 
   @ApiProperty({ description: 'Evidence description' })
   @IsString()

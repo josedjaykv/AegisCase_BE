@@ -168,6 +168,8 @@ Base path: `/evidence`
 | GET    | `/evidence/:id/chain-of-custody`  | ADMIN, DETECTIVE, ANALYST   | Full custody chain history   |
 | PATCH  | `/evidence/:id/archive`           | ADMIN                       | Archive evidence             |
 
+**Fields:** evidence carries an optional `title` (`≤200` chars, Feature 009) for a short heading distinct from the long `description`. Accepted on `POST`/`PUT` and returned on all reads; nullable for pre-existing rows (the FE falls back to `description`).
+
 **Business rules:** evidence is never physically deleted (V1). Chain-of-custody is append-only. Viewing evidence (`GET /evidence/:id`) records a custody-view event — the viewer becomes the last-known responsible party. `PATCH /evidence/:id/take-custody` lets any role assign custody to **themselves** (fixed reason `"Accessed evidence file"`; idempotent if already custodian) — the deliberate step required before downloading an evidence file (Feature 007).
 
 ---

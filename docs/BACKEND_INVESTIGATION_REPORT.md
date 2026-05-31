@@ -264,6 +264,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 | `id`                  | `id`                    | `id`                    | UUID               |    No    | PK                                                       |
 | `caseId`              | `caseId`                | `case_id`               | UUID               |    No    | Indexed                                                  |
 | `evidenceType`        | `evidenceType`          | `evidence_type`         | enum EvidenceType  |    No    | `PHYSICAL \| DIGITAL \| DOCUMENTARY \| TESTIMONIAL \| OTHER`|
+| `title`               | `title`                 | `title`                 | varchar(200)       |   Yes    | Short heading, default `NULL` (Feature 009); FE falls back to `description` |
 | `description`         | `description`           | `description`           | text               |    No    |                                                          |
 | `evidenceStatus`      | `evidenceStatus`        | `evidence_status`       | enum EvidenceStatus|    No    | Default `REGISTERED`. Values: `REGISTERED \| IN_CUSTODY \| TRANSFERRED \| ARCHIVED` |
 | `currentCustodianId`  | `currentCustodianId`    | `current_custodian_id`  | UUID               |   Yes    | Updated by transfers and by `GET /:id`                   |
@@ -1012,10 +1013,12 @@ All routes require `Authorization: Bearer ...`.
   |-----------------------|------------------|:--------:|-----------------------------------|
   | `caseId`              | UUID             |   Yes    | `@IsUUID()`                       |
   | `evidenceType`        | enum EvidenceType|   Yes    | `@IsEnum(EvidenceType)`           |
+  | `title`               | string           |    No    | `@IsString @MaxLength(200)` (Feature 009; FE treats it as required) |
   | `description`         | string           |   Yes    | `@IsString @IsNotEmpty`           |
   | `currentCustodianId`  | UUID             |    No    | `@IsUUID()` — defaults to actor   |
 
-- **Side effects:** Initial chain-of-custody row (`previousCustodianId=null`, `transferReason="Initial registration"`). Publishes `evidence.added`.
+- **Side effects:** Initial chain-of-custody row (`previousCustodianId=null`, `transferReason="Initial registration"`). Publishes `evidence.added` (payload now carries `title`).
+- **Response 201:** the `Evidence` entity, including `title` (`null` when omitted).
 
 #### `GET /evidence`
 - **Roles:** all three.
@@ -1032,7 +1035,7 @@ All routes require `Authorization: Bearer ...`.
 
 #### `PUT /evidence/:id`
 - **Roles:** ADMIN, DETECTIVE.
-- **Body (`UpdateEvidenceDto`):** any of `evidenceType`, `description`, `evidenceStatus`. All optional. No business-state guard.
+- **Body (`UpdateEvidenceDto`):** any of `evidenceType`, `title` (`@MaxLength(200)`), `description`, `evidenceStatus`. All optional. No business-state guard.
 
 #### `PATCH /evidence/:id/transfer-custody`
 - **Roles:** ADMIN, DETECTIVE.
@@ -1387,7 +1390,7 @@ The audit-service is the only consumer in V1. Every domain service publishes eve
 | `case.archived`             | `case.archived`            | case-service    | `case_code`, `archived_by_user_id`                                                   |
 | `involved.person.linked`    | `involved.person.linked`   | involved-service| `case_id`, `involved_person_id`, `involvement_type`                                  |
 | `involved.person.unlinked`  | `involved.person.unlinked` | involved-service| `case_id`, `involved_person_id`                                                      |
-| `evidence.added`            | `evidence.added`           | evidence-service| `case_id`, `evidence_type`, `custodian_user_id`                                      |
+| `evidence.added`            | `evidence.added`           | evidence-service| `case_id`, `evidence_type`, `custodian_user_id`, `title?`                            |
 | `evidence.transferred`      | `evidence.transferred`     | evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `transfer_reason?`           |
 | `evidence.archived`         | `evidence.archived`        | evidence-service| `case_id`, `archived_by_user_id`                                                     |
 | `evidence.custody.accessed` | `evidence.custody.accessed`| evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `reason`                     |
