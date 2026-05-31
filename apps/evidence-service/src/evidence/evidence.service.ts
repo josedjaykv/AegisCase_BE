@@ -219,6 +219,19 @@ export class EvidenceService {
   }
 
   /**
+   * Read-only single-evidence summary (Feature 011). Same shape as a `findAll`
+   * list row (no `custodyChain` relation) and — critically — **no side effect**:
+   * it does NOT record a view or touch the chain of custody. Used by the FE on a
+   * reload / deep-link of `/evidence/:id` where there is no warm list cache, so the
+   * mutating `GET /evidence/:id` is never auto-called.
+   */
+  async getSummary(id: string): Promise<Evidence> {
+    const evidence = await this.evidenceRepo.findOne({ where: { id } });
+    if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+    return evidence;
+  }
+
+  /**
    * Side-effect-free lookup of the current custodian. Used by media-service to
    * enforce "only the custodian may download an evidence file" — it must NOT use
    * `GET /evidence/:id` (that transfers custody).
