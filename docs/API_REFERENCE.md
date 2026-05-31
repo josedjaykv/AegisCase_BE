@@ -162,11 +162,13 @@ Base path: `/evidence`
 | GET    | `/evidence?caseId=<uuid>`         | ADMIN, DETECTIVE, ANALYST   | List (optionally by case)    |
 | GET    | `/evidence/:id`                   | ADMIN, DETECTIVE, ANALYST   | Get evidence (logs view)     |
 | PUT    | `/evidence/:id`                   | ADMIN, DETECTIVE            | Update evidence              |
-| PATCH  | `/evidence/:id/transfer-custody`  | ADMIN, DETECTIVE            | Transfer custody             |
+| PATCH  | `/evidence/:id/transfer-custody`  | ADMIN, DETECTIVE            | Transfer custody to a user   |
+| PATCH  | `/evidence/:id/take-custody`      | ADMIN, DETECTIVE, ANALYST   | Self-assign custody (idempotent) |
+| GET    | `/evidence/:id/custodian`         | ADMIN, DETECTIVE, ANALYST   | Current custodian (no side effect) |
 | GET    | `/evidence/:id/chain-of-custody`  | ADMIN, DETECTIVE, ANALYST   | Full custody chain history   |
 | PATCH  | `/evidence/:id/archive`           | ADMIN                       | Archive evidence             |
 
-**Business rules:** evidence is never physically deleted (V1). Chain-of-custody is append-only. Viewing evidence (`GET /evidence/:id`) records a custody-view event — the viewer becomes the last-known responsible party.
+**Business rules:** evidence is never physically deleted (V1). Chain-of-custody is append-only. Viewing evidence (`GET /evidence/:id`) records a custody-view event — the viewer becomes the last-known responsible party. `PATCH /evidence/:id/take-custody` lets any role assign custody to **themselves** (fixed reason `"Accessed evidence file"`; idempotent if already custodian) — the deliberate step required before downloading an evidence file (Feature 007).
 
 ---
 
@@ -207,6 +209,8 @@ Upload uses `multipart/form-data` with fields:
 - `description` — optional free-text (≤1000 chars), persisted and returned on all media reads (Feature 006).
 
 Hard cap: 100 MB per file (multer level). Stricter MIME/size rules may apply per `entity_type` — see `docs/MEDIA.md`.
+
+**Download gating (Feature 007):** `GET /media/:id/download-url` accepts `disposition` (`inline` | `attachment`, default `attachment`) and optional `context`. For media attached to an **EVIDENCE**, an `attachment` download is allowed **only for the evidence's current custodian** (any role) — otherwise `403`. Non-custodians call `PATCH /evidence/:id/take-custody` first. Inline previews (`disposition=inline`) are not gated; passing `context=viewer` additionally logs an `EVIDENCE_MEDIA_VIEWED` audit event (thumbnails omit it to avoid noise). Other entity types are unaffected.
 
 ---
 

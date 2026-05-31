@@ -39,6 +39,7 @@ const mockEvents = (): Mocked<EventPublisherService> =>
     publishEvidenceAdded: jest.fn(),
     publishEvidenceTransferred: jest.fn(),
     publishEvidenceArchived: jest.fn(),
+    publishEvidenceCustodyAccessed: jest.fn(),
   }) as any;
 
 const actor = (overrides: Partial<JwtPayload> = {}): JwtPayload => ({
@@ -205,6 +206,84 @@ describe('EvidenceService', () => {
     it('throws NotFoundException when missing', async () => {
       manager.findOne.mockResolvedValueOnce(null);
       await expect(service.findOne('ev-1', actor())).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('takeCustody', () => {
+    it('assigns custody to the caller, writes a fixed-reason chain row and publishes the event', async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ id: 'ev-1', caseId: 'case-1', currentCustodianId: 'user-2' })
+        .mockResolvedValueOnce({
+          id: 'ev-1',
+          caseId: 'case-1',
+          currentCustodianId: 'user-1',
+          custodyChain: [{ id: 'r1', transferReason: 'Accessed evidence file' }],
+        });
+
+      const result: any = await service.takeCustody('ev-1', actor());
+
+      expect(manager.insert).toHaveBeenCalledWith(
+        ChainOfCustody,
+        expect.objectContaining({
+          previousCustodianId: 'user-2',
+          newCustodianId: 'user-1',
+          transferredByUserId: 'user-1',
+          transferReason: 'Accessed evidence file',
+        }),
+      );
+      expect(manager.update).toHaveBeenCalledWith(
+        Evidence,
+        { id: 'ev-1' },
+        { currentCustodianId: 'user-1' },
+      );
+      expect(events.publishEvidenceCustodyAccessed).toHaveBeenCalledWith(
+        'user-1',
+        'ev-1',
+        expect.objectContaining({
+          previous_custodian_id: 'user-2',
+          new_custodian_id: 'user-1',
+          reason: 'Accessed evidence file',
+        }),
+      );
+      expect(result.currentCustodianId).toBe('user-1');
+    });
+
+    it('is idempotent: caller already custodian → no new row, no update, no event', async () => {
+      manager.findOne
+        .mockResolvedValueOnce({ id: 'ev-1', caseId: 'case-1', currentCustodianId: 'user-1' })
+        .mockResolvedValueOnce({ id: 'ev-1', currentCustodianId: 'user-1', custodyChain: [] });
+
+      const result: any = await service.takeCustody('ev-1', actor());
+
+      expect(manager.insert).not.toHaveBeenCalled();
+      expect(manager.update).not.toHaveBeenCalled();
+      expect(events.publishEvidenceCustodyAccessed).not.toHaveBeenCalled();
+      expect(result.currentCustodianId).toBe('user-1');
+    });
+
+    it('throws NotFoundException when missing', async () => {
+      manager.findOne.mockResolvedValueOnce(null);
+      await expect(service.takeCustody('ev-1', actor())).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('getCustodian', () => {
+    it('returns the current custodian without side effects', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce({
+        id: 'ev-1',
+        currentCustodianId: 'user-2',
+      } as any);
+
+      const result = await service.getCustodian('ev-1');
+
+      expect(result).toEqual({ evidenceId: 'ev-1', currentCustodianId: 'user-2' });
+      expect(evidenceRepo.save).not.toHaveBeenCalled();
+      expect(manager.insert).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when missing', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.getCustodian('ev-1')).rejects.toBeInstanceOf(NotFoundException);
     });
   });
 

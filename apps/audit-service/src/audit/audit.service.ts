@@ -15,6 +15,8 @@ const ACTION_MAP: Record<string, string> = {
   'evidence.added':         'EVIDENCE_ADDED',
   'evidence.transferred':   'EVIDENCE_CUSTODY_TRANSFERRED',
   'evidence.archived':      'EVIDENCE_ARCHIVED',
+  'evidence.custody.accessed': 'EVIDENCE_CUSTODY_ACCESSED',
+  'evidence.media.viewed':  'EVIDENCE_MEDIA_VIEWED',
   'task.assigned':          'TASK_ASSIGNED',
   'task.completed':         'TASK_COMPLETED',
   'task.overdue':           'TASK_OVERDUE',
@@ -163,6 +165,18 @@ export class AuditService {
         return {
           previousState: { case_id: p.case_id, linked: true },
           newState: { case_id: p.case_id, linked: false },
+        };
+
+      case 'evidence.custody.accessed':
+        return {
+          previousState: { custodian_id: p.previous_custodian_id },
+          newState: { custodian_id: p.new_custodian_id, reason: p.reason },
+        };
+
+      case 'evidence.media.viewed':
+        return {
+          previousState: null,
+          newState: { evidence_id: p.evidence_id, media_id: p.media_id },
         };
 
       case 'media.uploaded':

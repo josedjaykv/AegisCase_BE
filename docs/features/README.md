@@ -19,3 +19,4 @@ implementación, las pruebas y la documentación relacionada.
 | [004](004-case-involved-link-management.md) | Gestión del vínculo caso ↔ persona: roster, editar y desvincular | `involved-service` | Implementado | 2026-05-29 |
 | [005](005-task-list-case-filter.md) | Filtro `caseId` en `GET /tasks` — tablero de tareas por caso | `task-service` | Implementado | 2026-05-30 |
 | [006](006-media-description-and-rename.md) | Descripción y nombre personalizado en la subida de media | `media-service` | Implementado | 2026-05-30 |
+| [007](007-evidence-file-custody-gating.md) | Custodia para descargar archivos de evidencia (ver = log, descargar = custodia) | `evidence-service`, `media-service`, `audit-service` | Implementado | 2026-05-30 |

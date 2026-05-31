@@ -15,6 +15,7 @@ import { EvidenceService } from './evidence.service';
 import { CreateEvidenceDto } from './dto/create-evidence.dto';
 import { UpdateEvidenceDto } from './dto/update-evidence.dto';
 import { TransferCustodyDto } from './dto/transfer-custody.dto';
+import { TakeCustodyDto } from './dto/take-custody.dto';
 import { Roles } from '@aegiscase/auth';
 import { CurrentUser, JwtPayload } from '@aegiscase/common';
 import { UserRole } from '@aegiscase/enums';
@@ -77,6 +78,26 @@ export class EvidenceController {
     @CurrentUser() user: JwtPayload,
   ) {
     return this.evidenceService.transferCustody(id, dto, user);
+  }
+
+  @Patch(':id/take-custody')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({
+    summary: 'Self-assign custody (all roles) — required before downloading evidence files',
+  })
+  takeCustody(
+    @Param('id') id: string,
+    @Body() _dto: TakeCustodyDto,
+    @CurrentUser() user: JwtPayload,
+  ) {
+    return this.evidenceService.takeCustody(id, user);
+  }
+
+  @Get(':id/custodian')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({ summary: 'Get the current custodian (side-effect-free; for download gating)' })
+  getCustodian(@Param('id') id: string) {
+    return this.evidenceService.getCustodian(id);
   }
 
   @Get(':id/chain-of-custody')

@@ -8,6 +8,7 @@ import {
   EvidenceAddedEvent,
   EvidenceTransferredEvent,
   EvidenceArchivedEvent,
+  EvidenceCustodyAccessedEvent,
 } from '@aegiscase/events';
 
 @Injectable()
@@ -61,6 +62,22 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     this.publish(EventPatterns.EVIDENCE_ARCHIVED, {
       event_id: uuidv4(),
       event_type: 'evidence.archived',
+      occurred_at: new Date(),
+      actor_user_id: actorUserId,
+      entity_type: 'Evidence',
+      entity_id: evidenceId,
+      payload,
+    });
+  }
+
+  publishEvidenceCustodyAccessed(
+    actorUserId: string,
+    evidenceId: string,
+    payload: EvidenceCustodyAccessedEvent['payload'],
+  ): void {
+    this.publish(EventPatterns.EVIDENCE_CUSTODY_ACCESSED, {
+      event_id: uuidv4(),
+      event_type: 'evidence.custody.accessed',
       occurred_at: new Date(),
       actor_user_id: actorUserId,
       entity_type: 'Evidence',

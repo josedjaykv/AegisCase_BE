@@ -8,6 +8,8 @@ export const EventPatterns = {
   EVIDENCE_ADDED:          'evidence.added',
   EVIDENCE_TRANSFERRED:    'evidence.transferred',
   EVIDENCE_ARCHIVED:       'evidence.archived',
+  EVIDENCE_CUSTODY_ACCESSED: 'evidence.custody.accessed',
+  EVIDENCE_MEDIA_VIEWED:   'evidence.media.viewed',
   // Task
   TASK_ASSIGNED:           'task.assigned',
   TASK_COMPLETED:          'task.completed',
