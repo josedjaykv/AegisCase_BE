@@ -168,7 +168,12 @@ export class AuditService {
       case 'media.uploaded':
         return {
           previousState: null,
-          newState: { url: p.url, entity_type: p.entity_type, entity_id: p.entity_id },
+          newState: {
+            url: p.url,
+            entity_type: p.entity_type,
+            entity_id: p.entity_id,
+            description: p.description,
+          },
         };
 
       default:

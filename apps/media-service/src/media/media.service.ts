@@ -95,6 +95,7 @@ export class MediaService {
           entityId: dto.entity_id,
           uploadedByUserId,
           originalFilename: file.originalname,
+          description: dto.description ?? null,
           fileSize: file.size,
           mimeType: file.mimetype,
           s3Key,
@@ -112,6 +113,7 @@ export class MediaService {
       url: record.url,
       entity_type: dto.entity_type,
       entity_id: dto.entity_id,
+      description: record.description ?? undefined,
     });
 
     this.logger.log(`Media saved: ${record.id} for ${dto.entity_type}/${dto.entity_id}`);

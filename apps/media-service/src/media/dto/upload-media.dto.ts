@@ -1,5 +1,5 @@
-import { IsEnum, IsNotEmpty, IsString } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsEnum, IsNotEmpty, IsOptional, IsString, MaxLength } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 import { MediaEntityType } from '@aegiscase/enums';
 
 export class UploadMediaDto {
@@ -13,4 +13,12 @@ export class UploadMediaDto {
   @IsString()
   @IsNotEmpty()
   entity_id: string;
+
+  @ApiPropertyOptional({
+    description: 'Optional free-text description of the media (≤ 1000 chars)',
+  })
+  @IsOptional()
+  @IsString()
+  @MaxLength(1000)
+  description?: string;
 }
