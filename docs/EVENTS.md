@@ -32,6 +32,7 @@ All queues are **durable**. The audit queue routes dead-letters to `dlq.investig
 | InvolvedPersonLinked | `involved.person.linked` | involved-service | audit-service | POST /involved-persons/:id/cases/:caseId |
 | InvolvedPersonUnlinked | `involved.person.unlinked` | involved-service | audit-service | DELETE /involved-persons/:id/cases/:caseId |
 | EvidenceAdded | `evidence.added` | evidence-service | audit-service | POST /evidence |
+| EvidenceUpdated | `evidence.updated` | evidence-service | audit-service | PUT /evidence/:id (custodian only) |
 | EvidenceTransferred | `evidence.transferred` | evidence-service | audit-service | PATCH /evidence/:id/transfer-custody |
 | EvidenceArchived | `evidence.archived` | evidence-service | audit-service | PATCH /evidence/:id/archive |
 | EvidenceCustodyAccessed | `evidence.custody.accessed` | evidence-service | audit-service | PATCH /evidence/:id/take-custody (when custody changes) |

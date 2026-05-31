@@ -279,7 +279,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 **Business rules (`EvidenceService`):**
 - `create`: sets `evidenceStatus = REGISTERED`, `currentCustodianId = dto.currentCustodianId ?? actor.sub`, then inserts the **initial** chain-of-custody row with `previousCustodianId = null` and `transferReason = "Initial registration"`. Publishes `evidence.added`.
 - `findOne(id, actor, trackView = true)`: appends a `chain_of_custody` row with `transferReason = "Viewed by user"`, mutates `currentCustodianId = actor.sub`, then returns the reloaded entity (with `custodyChain`). **This is the "view = take responsibility" side effect.** The COC insert and the `currentCustodianId` update run in a **single DB transaction** — either both persist or neither does (see Fix 001). **Idempotent self-view:** if the actor is *already* the current custodian (e.g. a UI refresh), no new row is appended and no update runs; a view by a *different* user still records.
-- `update`: no business-status guard — patches the fields provided. **Note:** unlike `Case`, there is no "archived guard" — an archived evidence is still mutable via `PUT /evidence/:id`.
+- `update`: **custody gate (Feature 010)** — `403 Forbidden` unless `currentCustodianId === actor.sub` (all roles, incl. ADMIN). Then patches the fields provided and publishes `evidence.updated` with only the changed fields. No business-status guard otherwise. **Note:** unlike `Case`, there is no "archived guard" — an archived evidence held in custody is still mutable via `PUT /evidence/:id`.
 - `transferCustody`: appends a chain-of-custody row (`previousCustodianId = current`, `newCustodianId = dto.newCustodianId`); sets `evidenceStatus = TRANSFERRED`; publishes `evidence.transferred`.
 - `takeCustody` (Feature 007): **self-assign** custody to the caller. Atomic (one transaction) and **idempotent** — if the caller already holds custody, no chain row is written and no event fires. Otherwise inserts a chain row with the **fixed reason `"Accessed evidence file"`** (`previousCustodianId = current`, `newCustodianId = transferredByUserId = caller.sub`), sets `currentCustodianId = caller.sub`, and publishes `evidence.custody.accessed` post-commit. Does **not** change `evidenceStatus`. Allowed for **all three roles** (the caller assigns only to themselves).
 - `getCustodian` (Feature 007): side-effect-free `{ evidenceId, currentCustodianId }`. Exists so media-service can gate evidence-file downloads without invoking `findOne` (which would transfer custody).
@@ -414,6 +414,7 @@ Append-only by convention — no update or delete code paths reference this enti
 | `involved.person.linked`    | `INVOLVED_PERSON_LINKED`       |
 | `involved.person.unlinked`  | `INVOLVED_PERSON_UNLINKED`     |
 | `evidence.added`            | `EVIDENCE_ADDED`               |
+| `evidence.updated`          | `EVIDENCE_UPDATED`             |
 | `evidence.transferred`      | `EVIDENCE_CUSTODY_TRANSFERRED` |
 | `evidence.archived`         | `EVIDENCE_ARCHIVED`            |
 | `evidence.custody.accessed` | `EVIDENCE_CUSTODY_ACCESSED`    |
@@ -510,7 +511,7 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 | `DELETE /involved-persons/:id/cases/:caseId` | |   X   |     X     |         |
 | `POST /evidence`                    |        |   X   |     X     |         |
 | `GET /evidence` (list/get/coc)      |        |   X   |     X     |    X    |
-| `PUT /evidence/:id`                 |        |   X   |     X     |         |
+| `PUT /evidence/:id` (custodian only ‖) |     |   X   |     X     |         |
 | `PATCH /evidence/:id/transfer-custody` |     |   X   |     X     |         |
 | `PATCH /evidence/:id/take-custody`, `GET /evidence/:id/custodian` | | X | X | X |
 | `PATCH /evidence/:id/archive`       |        |   X   |           |         |
@@ -525,6 +526,7 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 
 † ANALYST is permitted by `@Roles`, but the service additionally checks `task.assignedToUserId === actor.sub`. Also, ANALYST cannot send `status: CANCELLED`.
 ‡ The decorated roles include ANALYST and DETECTIVE — the code allows it. This contradicts the CLAUDE.md spec ("Audit: ADMIN only"). See [Discrepancies](#17-discrepancies--open-questions).
+‖ Beyond the `@Roles` check, `PUT /evidence/:id` requires the caller to be the evidence's current custodian (any role, incl. ADMIN) — otherwise `403`. Take custody first via `PATCH /evidence/:id/take-custody` (Feature 010).
 
 ---
 
@@ -1035,7 +1037,9 @@ All routes require `Authorization: Bearer ...`.
 
 #### `PUT /evidence/:id`
 - **Roles:** ADMIN, DETECTIVE.
+- **Custody gate (Feature 010):** the caller **must be the current `currentCustodianId`** — otherwise **`403 Forbidden`** *"You must hold custody of this evidence to edit it"*. Applies to **all roles incl. ADMIN**; a non-custodian must `PATCH /evidence/:id/take-custody` first (which is audited). Same policy as downloading evidence files (Feature 007).
 - **Body (`UpdateEvidenceDto`):** any of `evidenceType`, `title` (`@MaxLength(200)`), `description`, `evidenceStatus`. All optional. No business-state guard.
+- **Side effects:** publishes `evidence.updated` (audit `EVIDENCE_UPDATED`) with the changed fields in `newState`.
 
 #### `PATCH /evidence/:id/transfer-custody`
 - **Roles:** ADMIN, DETECTIVE.
@@ -1391,6 +1395,7 @@ The audit-service is the only consumer in V1. Every domain service publishes eve
 | `involved.person.linked`    | `involved.person.linked`   | involved-service| `case_id`, `involved_person_id`, `involvement_type`                                  |
 | `involved.person.unlinked`  | `involved.person.unlinked` | involved-service| `case_id`, `involved_person_id`                                                      |
 | `evidence.added`            | `evidence.added`           | evidence-service| `case_id`, `evidence_type`, `custodian_user_id`, `title?`                            |
+| `evidence.updated`          | `evidence.updated`         | evidence-service| `case_id`, `updated_by_user_id`, `changes{title?,description?,evidence_type?,evidence_status?}` |
 | `evidence.transferred`      | `evidence.transferred`     | evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `transfer_reason?`           |
 | `evidence.archived`         | `evidence.archived`        | evidence-service| `case_id`, `archived_by_user_id`                                                     |
 | `evidence.custody.accessed` | `evidence.custody.accessed`| evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `reason`                     |
@@ -1400,7 +1405,7 @@ The audit-service is the only consumer in V1. Every domain service publishes eve
 | `task.overdue`              | `task.overdue`             | task-service    | `case_id`, `assigned_to_user_id`, `due_date`                                         |
 | `media.uploaded`            | `media.uploaded`           | media-service   | `url`, `entity_type`, `entity_id`                                                    |
 
-Note: `case.updated` is defined as a typescript interface in `libs/events/src/case.events.ts` but is **not actually published** by any service in the codebase (see Discrepancies).
+Note: `case.updated` is defined as a typescript interface in `libs/events/src/case.events.ts` but is **not actually published** by any service in the codebase (see Discrepancies). `evidence.updated`, by contrast, **is** published by evidence-service since Feature 010 (`PUT /evidence/:id`).
 
 ### 7.4 Frontend implications
 
@@ -1596,7 +1601,7 @@ The matrix below restates the role-by-action grid from Section 2.1 with the prec
 | Register evidence                | `POST /evidence`                                  |   ✓   |     ✓     |    —     |
 | Read evidence (no side effect)   | `GET /evidence`, `GET /evidence/:id/chain-of-custody` | ✓ |     ✓     |    ✓     |
 | Read evidence detail (mutates COC) | `GET /evidence/:id`                             |   ✓   |     ✓     |    ✓     |
-| Update evidence                  | `PUT /evidence/:id`                               |   ✓   |     ✓     |    —     |
+| Update evidence (custodian only) | `PUT /evidence/:id`                               |   ✓‖  |     ✓‖    |    —     |
 | Transfer custody                 | `PATCH /evidence/:id/transfer-custody`            |   ✓   |     ✓     |    —     |
 | Take custody (self)              | `PATCH /evidence/:id/take-custody`                |   ✓   |     ✓     |    ✓     |
 | Read custodian                   | `GET /evidence/:id/custodian`                     |   ✓   |     ✓     |    ✓     |
@@ -1615,6 +1620,8 @@ The matrix below restates the role-by-action grid from Section 2.1 with the prec
 † Analyst restriction: only for tasks where `assignedToUserId === actor.sub`.
 
 ‡ For media attached to an `EVIDENCE`, an `attachment` download requires the caller to be the evidence's current custodian (any role) — otherwise `403`. Non-custodians must `PATCH /evidence/:id/take-custody` first. Inline previews are not gated. (Feature 007)
+
+‖ `PUT /evidence/:id` requires the caller to be the evidence's current custodian (any role, incl. ADMIN) — otherwise `403`. Take custody first via `PATCH /evidence/:id/take-custody`. (Feature 010)
 
 ---
 
@@ -1902,7 +1909,7 @@ The items below are points where the implementation diverges from the project do
 
 ### 17.8 Evidence `update` does not block on `archived`
 
-- `Case.update()` refuses to write a `CLOSED` case. `Evidence.update()` has no such guard — even archived evidence is editable via `PUT /evidence/:id`.
+- `Case.update()` refuses to write a `CLOSED` case. `Evidence.update()` has no status guard — even archived evidence is editable via `PUT /evidence/:id` — but since Feature 010 it does enforce a **custody** guard (only the current custodian may edit, any role).
 
 ### 17.9 `GET /media/entity/:type/:id` ignores pagination query
 

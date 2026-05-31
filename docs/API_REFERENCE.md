@@ -161,7 +161,7 @@ Base path: `/evidence`
 | POST   | `/evidence`                       | ADMIN, DETECTIVE            | Register evidence            |
 | GET    | `/evidence?caseId=<uuid>`         | ADMIN, DETECTIVE, ANALYST   | List (optionally by case)    |
 | GET    | `/evidence/:id`                   | ADMIN, DETECTIVE, ANALYST   | Get evidence (logs view)     |
-| PUT    | `/evidence/:id`                   | ADMIN, DETECTIVE            | Update evidence              |
+| PUT    | `/evidence/:id`                   | ADMIN, DETECTIVE (custodian only) | Update evidence (403 if not custodian) |
 | PATCH  | `/evidence/:id/transfer-custody`  | ADMIN, DETECTIVE            | Transfer custody to a user   |
 | PATCH  | `/evidence/:id/take-custody`      | ADMIN, DETECTIVE, ANALYST   | Self-assign custody (idempotent) |
 | GET    | `/evidence/:id/custodian`         | ADMIN, DETECTIVE, ANALYST   | Current custodian (no side effect) |
@@ -170,7 +170,7 @@ Base path: `/evidence`
 
 **Fields:** evidence carries an optional `title` (`≤200` chars, Feature 009) for a short heading distinct from the long `description`. Accepted on `POST`/`PUT` and returned on all reads; nullable for pre-existing rows (the FE falls back to `description`).
 
-**Business rules:** evidence is never physically deleted (V1). Chain-of-custody is append-only. Viewing evidence (`GET /evidence/:id`) records a custody-view event — the viewer becomes the last-known responsible party. `PATCH /evidence/:id/take-custody` lets any role assign custody to **themselves** (fixed reason `"Accessed evidence file"`; idempotent if already custodian) — the deliberate step required before downloading an evidence file (Feature 007).
+**Business rules:** evidence is never physically deleted (V1). Chain-of-custody is append-only. Viewing evidence (`GET /evidence/:id`) records a custody-view event — the viewer becomes the last-known responsible party. `PATCH /evidence/:id/take-custody` lets any role assign custody to **themselves** (fixed reason `"Accessed evidence file"`; idempotent if already custodian) — the deliberate step required before downloading an evidence file (Feature 007) **or editing it** (Feature 010). **Editing (`PUT /evidence/:id`) requires custody** — a non-custodian gets `403` and must take custody first; the edit publishes `EVIDENCE_UPDATED` to the audit trail.
 
 ---
 
