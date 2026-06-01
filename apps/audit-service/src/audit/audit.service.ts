@@ -13,6 +13,7 @@ const ACTION_MAP: Record<string, string> = {
   'involved.person.linked':   'INVOLVED_PERSON_LINKED',
   'involved.person.unlinked': 'INVOLVED_PERSON_UNLINKED',
   'evidence.added':         'EVIDENCE_ADDED',
+  'evidence.updated':       'EVIDENCE_UPDATED',
   'evidence.transferred':   'EVIDENCE_CUSTODY_TRANSFERRED',
   'evidence.archived':      'EVIDENCE_ARCHIVED',
   'evidence.custody.accessed': 'EVIDENCE_CUSTODY_ACCESSED',
@@ -165,6 +166,12 @@ export class AuditService {
         return {
           previousState: { case_id: p.case_id, linked: true },
           newState: { case_id: p.case_id, linked: false },
+        };
+
+      case 'evidence.updated':
+        return {
+          previousState: null,
+          newState: { case_id: p.case_id, updated_by_user_id: p.updated_by_user_id, ...p.changes },
         };
 
       case 'evidence.custody.accessed':

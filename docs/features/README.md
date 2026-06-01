@@ -21,3 +21,4 @@ implementación, las pruebas y la documentación relacionada.
 | [006](006-media-description-and-rename.md) | Descripción y nombre personalizado en la subida de media | `media-service` | Implementado | 2026-05-30 |
 | [007](007-evidence-file-custody-gating.md) | Custodia para descargar archivos de evidencia (ver = log, descargar = custodia) | `evidence-service`, `media-service`, `audit-service` | Implementado | 2026-05-30 |
 | [009](009-evidence-title.md) | Campo `title` en evidencia | `evidence-service` | Implementado | 2026-05-30 |
+| [010](010-evidence-edit-requires-custody.md) | Editar evidencia exige custodia (+ evento `evidence.updated`) | `evidence-service`, `audit-service` | Implementado | 2026-05-31 |

@@ -6,6 +6,7 @@ import {
   INVESTIGATION_EXCHANGE,
   getRmqUrl,
   EvidenceAddedEvent,
+  EvidenceUpdatedEvent,
   EvidenceTransferredEvent,
   EvidenceArchivedEvent,
   EvidenceCustodyAccessedEvent,
@@ -38,6 +39,18 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     this.publish(EventPatterns.EVIDENCE_ADDED, {
       event_id: uuidv4(),
       event_type: 'evidence.added',
+      occurred_at: new Date(),
+      actor_user_id: actorUserId,
+      entity_type: 'Evidence',
+      entity_id: evidenceId,
+      payload,
+    });
+  }
+
+  publishEvidenceUpdated(actorUserId: string, evidenceId: string, payload: EvidenceUpdatedEvent['payload']): void {
+    this.publish(EventPatterns.EVIDENCE_UPDATED, {
+      event_id: uuidv4(),
+      event_type: 'evidence.updated',
       occurred_at: new Date(),
       actor_user_id: actorUserId,
       entity_type: 'Evidence',

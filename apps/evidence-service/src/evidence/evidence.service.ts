@@ -2,6 +2,7 @@ import {
   Injectable,
   NotFoundException,
   ConflictException,
+  ForbiddenException,
 } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { DataSource, Repository } from 'typeorm';
@@ -116,8 +117,31 @@ export class EvidenceService {
   async update(id: string, dto: UpdateEvidenceDto, actor: JwtPayload): Promise<Evidence> {
     const evidence = await this.evidenceRepo.findOne({ where: { id } });
     if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+
+    // Custody gate (Feature 010): only the current custodian may edit — same policy
+    // as downloading evidence files (Feature 007). Applies to ALL roles, incl. ADMIN;
+    // a non-custodian must `PATCH /evidence/:id/take-custody` first (which is audited).
+    if (evidence.currentCustodianId !== actor.sub) {
+      throw new ForbiddenException('You must hold custody of this evidence to edit it');
+    }
+
     Object.assign(evidence, dto);
-    return this.evidenceRepo.save(evidence);
+    const saved = await this.evidenceRepo.save(evidence);
+
+    // Emit only the fields the caller actually sent, so Audit records "who edited what".
+    const changes: Record<string, unknown> = {};
+    if (dto.title !== undefined) changes.title = saved.title;
+    if (dto.description !== undefined) changes.description = saved.description;
+    if (dto.evidenceType !== undefined) changes.evidence_type = saved.evidenceType;
+    if (dto.evidenceStatus !== undefined) changes.evidence_status = saved.evidenceStatus;
+
+    this.events.publishEvidenceUpdated(actor.sub, saved.id, {
+      case_id: saved.caseId,
+      updated_by_user_id: actor.sub,
+      changes,
+    });
+
+    return saved;
   }
 
   async transferCustody(id: string, dto: TransferCustodyDto, actor: JwtPayload): Promise<Evidence> {

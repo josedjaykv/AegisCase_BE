@@ -1,6 +1,6 @@
 import { Test } from '@nestjs/testing';
 import { getRepositoryToken } from '@nestjs/typeorm';
-import { ConflictException, NotFoundException } from '@nestjs/common';
+import { ConflictException, ForbiddenException, NotFoundException } from '@nestjs/common';
 import { DataSource, Repository } from 'typeorm';
 import { EvidenceService } from './evidence.service';
 import { Evidence } from './evidence.entity';
@@ -37,6 +37,7 @@ const mockDataSource = (manager: FakeManager): { ds: Mocked<DataSource>; manager
 const mockEvents = (): Mocked<EventPublisherService> =>
   ({
     publishEvidenceAdded: jest.fn(),
+    publishEvidenceUpdated: jest.fn(),
     publishEvidenceTransferred: jest.fn(),
     publishEvidenceArchived: jest.fn(),
     publishEvidenceCustodyAccessed: jest.fn(),
@@ -251,6 +252,52 @@ describe('EvidenceService', () => {
     it('throws NotFoundException when missing', async () => {
       manager.findOne.mockResolvedValueOnce(null);
       await expect(service.findOne('ev-1', actor())).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
+  describe('update', () => {
+    it('rejects an edit from a non-custodian (403) — even an ADMIN', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce({
+        id: 'ev-1',
+        currentCustodianId: 'user-2',
+      } as any);
+
+      await expect(
+        service.update('ev-1', { title: 'x' }, actor({ role: UserRole.ADMIN })),
+      ).rejects.toBeInstanceOf(ForbiddenException);
+      expect(evidenceRepo.save).not.toHaveBeenCalled();
+      expect(events.publishEvidenceUpdated).not.toHaveBeenCalled();
+    });
+
+    it('lets the current custodian edit and publishes evidence.updated with only changed fields', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce({
+        id: 'ev-1',
+        caseId: 'case-1',
+        currentCustodianId: 'user-1',
+        title: 'old',
+        description: 'old-desc',
+      } as any);
+      evidenceRepo.save.mockImplementationOnce(async (e: any) => e);
+
+      const result: any = await service.update('ev-1', { title: 'new title' }, actor());
+
+      expect(result.title).toBe('new title');
+      expect(events.publishEvidenceUpdated).toHaveBeenCalledWith(
+        'user-1',
+        'ev-1',
+        expect.objectContaining({
+          case_id: 'case-1',
+          updated_by_user_id: 'user-1',
+          changes: { title: 'new title' },
+        }),
+      );
+    });
+
+    it('throws NotFoundException when missing', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.update('ev-1', { title: 'x' }, actor())).rejects.toBeInstanceOf(
+        NotFoundException,
+      );
     });
   });
 

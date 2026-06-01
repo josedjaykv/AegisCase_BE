@@ -10,6 +10,21 @@ export interface EvidenceAddedEvent extends BaseEvent {
   };
 }
 
+export interface EvidenceUpdatedEvent extends BaseEvent {
+  event_type: 'evidence.updated';
+  payload: {
+    case_id: string;
+    updated_by_user_id: string;
+    /** Only the fields actually changed by the edit (snake_case keys). */
+    changes: {
+      title?: string | null;
+      description?: string;
+      evidence_type?: string;
+      evidence_status?: string;
+    };
+  };
+}
+
 export interface EvidenceTransferredEvent extends BaseEvent {
   event_type: 'evidence.transferred';
   payload: {

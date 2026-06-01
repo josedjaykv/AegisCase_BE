@@ -6,6 +6,7 @@ export const EventPatterns = {
   CASE_ARCHIVED:           'case.archived',
   // Evidence
   EVIDENCE_ADDED:          'evidence.added',
+  EVIDENCE_UPDATED:        'evidence.updated',
   EVIDENCE_TRANSFERRED:    'evidence.transferred',
   EVIDENCE_ARCHIVED:       'evidence.archived',
   EVIDENCE_CUSTODY_ACCESSED: 'evidence.custody.accessed',
