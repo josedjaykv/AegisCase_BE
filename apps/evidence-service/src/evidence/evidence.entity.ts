@@ -12,6 +12,9 @@ export class Evidence extends AegisBaseEntity {
   @Column({ name: 'evidence_type', type: 'enum', enum: EvidenceType })
   evidenceType: EvidenceType;
 
+  @Column({ type: 'varchar', length: 200, nullable: true })
+  title: string | null;
+
   @Column({ type: 'text' })
   description: string;
 

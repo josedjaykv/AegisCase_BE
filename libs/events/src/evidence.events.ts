@@ -6,6 +6,7 @@ export interface EvidenceAddedEvent extends BaseEvent {
     case_id: string;
     evidence_type: string;
     custodian_user_id: string;
+    title?: string;
   };
 }
 
