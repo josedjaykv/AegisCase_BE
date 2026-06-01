@@ -47,17 +47,38 @@ export class S3Service {
     }
   }
 
-  async getPresignedUrl(s3Key: string, expiresIn = 3600): Promise<string> {
+  async getPresignedUrl(
+    s3Key: string,
+    expiresIn = 3600,
+    opts: { disposition?: 'inline' | 'attachment'; filename?: string } = {},
+  ): Promise<string> {
     try {
+      const responseContentDisposition = opts.disposition
+        ? this.buildContentDisposition(opts.disposition, opts.filename)
+        : undefined;
       return await getSignedUrl(
         this.client,
-        new GetObjectCommand({ Bucket: this.bucket, Key: s3Key }),
+        new GetObjectCommand({
+          Bucket: this.bucket,
+          Key: s3Key,
+          ResponseContentDisposition: responseContentDisposition,
+        }),
         { expiresIn },
       );
     } catch (err) {
       this.logger.error(`Failed to generate presigned URL for ${s3Key}: ${err?.message}`);
       throw new ServiceUnavailableException('Failed to generate download URL');
     }
+  }
+
+  private buildContentDisposition(
+    disposition: 'inline' | 'attachment',
+    filename?: string,
+  ): string {
+    if (!filename) return disposition;
+    // RFC 5987 — encode the filename so non-ASCII names (e.g. accents) survive.
+    const encoded = encodeURIComponent(filename);
+    return `${disposition}; filename*=UTF-8''${encoded}`;
   }
 
   async delete(s3Key: string): Promise<void> {

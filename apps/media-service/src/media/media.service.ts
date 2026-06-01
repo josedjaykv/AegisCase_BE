@@ -1,5 +1,6 @@
 import {
   BadRequestException,
+  ForbiddenException,
   Injectable,
   Logger,
   NotFoundException,
@@ -13,7 +14,9 @@ import { Media } from './media.entity';
 import { S3Service } from './s3.service';
 import { UploadMediaDto } from './dto/upload-media.dto';
 import { EventPublisherService } from '../events/event-publisher.service';
+import { EvidenceCustodyClient } from './evidence-custody.client';
 import { MediaEntityType } from '@aegiscase/enums';
+import { JwtPayload } from '@aegiscase/common';
 
 const ENTITY_FOLDER: Record<MediaEntityType, string> = {
   [MediaEntityType.CASE]: 'cases',
@@ -63,6 +66,7 @@ export class MediaService {
     @InjectRepository(Media) private readonly repo: Repository<Media>,
     private readonly s3: S3Service,
     private readonly events: EventPublisherService,
+    private readonly custodyClient: EvidenceCustodyClient,
     private readonly config: ConfigService,
   ) {
     this.maxFileSize = parseInt(this.config.get('MAX_FILE_SIZE', '52428800'));
@@ -133,9 +137,50 @@ export class MediaService {
     return record;
   }
 
-  async getDownloadUrl(id: string, expiresIn = 3600): Promise<{ url: string; expiresIn: number }> {
+  async getDownloadUrl(
+    id: string,
+    opts: {
+      disposition?: string;
+      context?: string;
+      actor: JwtPayload;
+      authHeader?: string;
+    },
+    expiresIn = 3600,
+  ): Promise<{ url: string; expiresIn: number }> {
     const record = await this.findOne(id);
-    const url = await this.s3.getPresignedUrl(record.s3Key, expiresIn);
+
+    // Fail-safe normalization: only an explicit `inline` is treated as a preview;
+    // anything else (incl. unknown values) is a download → goes through custody gating.
+    const disposition: 'inline' | 'attachment' =
+      opts.disposition === 'inline' ? 'inline' : 'attachment';
+
+    if (record.entityType === MediaEntityType.EVIDENCE) {
+      if (disposition === 'attachment') {
+        // Cambio 2 — enforcement: only the current custodian may DOWNLOAD evidence files.
+        const custodianId = await this.custodyClient.getCurrentCustodianId(
+          record.entityId,
+          opts.authHeader,
+        );
+        if (custodianId !== opts.actor.sub) {
+          throw new ForbiddenException(
+            'You must hold custody of this evidence to download its files',
+          );
+        }
+      } else if (opts.context === 'viewer') {
+        // Cambio 3 — traceability for a deliberate inline VIEW (not a thumbnail).
+        // Only logged when the FE explicitly tags the request `context=viewer`, so
+        // gallery thumbnails (no context) never generate audit noise.
+        this.events.publishEvidenceMediaViewed(opts.actor.sub, record.id, {
+          evidence_id: record.entityId,
+          media_id: record.id,
+        });
+      }
+    }
+
+    const url = await this.s3.getPresignedUrl(record.s3Key, expiresIn, {
+      disposition,
+      filename: record.originalFilename ?? undefined,
+    });
     return { url, expiresIn };
   }
 

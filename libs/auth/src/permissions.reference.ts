@@ -41,6 +41,8 @@ export const PERMISSION_MATRIX = {
     delete:          [UserRole.ADMIN],
     archive:         [UserRole.ADMIN],
     transferCustody: [UserRole.ADMIN, UserRole.DETECTIVE],
+    takeCustody:     [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST], // self-assign (Feature 007)
+    readCustodian:   [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST], // side-effect-free lookup
   },
 
   // ── Tasks ────────────────────────────────────────────────────────────────
@@ -90,5 +92,8 @@ export const PERMISSION_MATRIX = {
   media: {
     upload:  [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
     read:    [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST],
+    // Downloading (disposition=attachment) media of an EVIDENCE is additionally
+    // gated to the evidence's current custodian, regardless of role (Feature 007).
+    downloadEvidenceFile: 'EVIDENCE custodian only',
   },
 } as const;

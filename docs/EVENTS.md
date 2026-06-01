@@ -34,6 +34,8 @@ All queues are **durable**. The audit queue routes dead-letters to `dlq.investig
 | EvidenceAdded | `evidence.added` | evidence-service | audit-service | POST /evidence |
 | EvidenceTransferred | `evidence.transferred` | evidence-service | audit-service | PATCH /evidence/:id/transfer-custody |
 | EvidenceArchived | `evidence.archived` | evidence-service | audit-service | PATCH /evidence/:id/archive |
+| EvidenceCustodyAccessed | `evidence.custody.accessed` | evidence-service | audit-service | PATCH /evidence/:id/take-custody (when custody changes) |
+| EvidenceMediaViewed | `evidence.media.viewed` | media-service | audit-service | GET /media/:id/download-url?disposition=inline&context=viewer (EVIDENCE media) |
 | TaskAssigned | `task.assigned` | task-service | audit-service | POST /tasks |
 | TaskCompleted | `task.completed` | task-service | audit-service | PATCH /tasks/:id/status → COMPLETED |
 | TaskOverdue | `task.overdue` | task-service | audit-service | Auto-marked (lazy evaluation on findAll/findOne) |

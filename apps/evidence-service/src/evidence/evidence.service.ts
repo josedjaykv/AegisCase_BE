@@ -17,6 +17,9 @@ import { EventPublisherService } from '../events/event-publisher.service';
 
 @Injectable()
 export class EvidenceService {
+  /** Fixed chain-of-custody reason for a self-assigned custody acquisition. */
+  static readonly CUSTODY_ACCESS_REASON = 'Accessed evidence file';
+
   constructor(
     @InjectRepository(Evidence)
     private readonly evidenceRepo: Repository<Evidence>,
@@ -142,6 +145,65 @@ export class EvidenceService {
     });
 
     return transferred;
+  }
+
+  /**
+   * Self-assign custody to the caller. Unlike `transferCustody` (ADMIN/DETECTIVE,
+   * assigns to a named user), any role may take custody of *themselves* — the
+   * deliberate act required before downloading evidence files (Feature 007).
+   * Atomic + idempotent: if the caller already holds custody, no new chain row.
+   */
+  async takeCustody(id: string, actor: JwtPayload): Promise<Evidence> {
+    const result = await this.dataSource.transaction(async (manager) => {
+      const evidence = await manager.findOne(Evidence, { where: { id } });
+      if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+
+      const previousCustodianId = evidence.currentCustodianId;
+      const changed = previousCustodianId !== actor.sub;
+
+      if (changed) {
+        await manager.insert(ChainOfCustody, {
+          evidenceId: id,
+          previousCustodianId,
+          newCustodianId: actor.sub,
+          transferredByUserId: actor.sub,
+          transferReason: EvidenceService.CUSTODY_ACCESS_REASON,
+        });
+        await manager.update(Evidence, { id }, { currentCustodianId: actor.sub });
+      }
+
+      const fresh = (await manager.findOne(Evidence, {
+        where: { id },
+        relations: ['custodyChain'],
+      })) as Evidence;
+      return { fresh, changed, previousCustodianId };
+    });
+
+    // Publish after commit — a broker hiccup must not roll back the custody change.
+    if (result.changed) {
+      this.events.publishEvidenceCustodyAccessed(actor.sub, result.fresh.id, {
+        case_id: result.fresh.caseId,
+        previous_custodian_id: result.previousCustodianId,
+        new_custodian_id: actor.sub,
+        reason: EvidenceService.CUSTODY_ACCESS_REASON,
+      });
+    }
+
+    return result.fresh;
+  }
+
+  /**
+   * Side-effect-free lookup of the current custodian. Used by media-service to
+   * enforce "only the custodian may download an evidence file" — it must NOT use
+   * `GET /evidence/:id` (that transfers custody).
+   */
+  async getCustodian(id: string): Promise<{ evidenceId: string; currentCustodianId: string | null }> {
+    const evidence = await this.evidenceRepo.findOne({
+      where: { id },
+      select: ['id', 'currentCustodianId'],
+    });
+    if (!evidence) throw new NotFoundException(`Evidence ${id} not found`);
+    return { evidenceId: evidence.id, currentCustodianId: evidence.currentCustodianId };
   }
 
   async getCustodyChain(id: string): Promise<ChainOfCustody[]> {

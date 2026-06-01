@@ -3,6 +3,7 @@ import {
   Controller,
   Delete,
   Get,
+  Headers,
   HttpCode,
   HttpStatus,
   Param,
@@ -66,9 +67,23 @@ export class MediaController {
 
   @Get(':id/download-url')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
-  @ApiOperation({ summary: 'Generate a pre-signed download URL for media' })
-  getDownloadUrl(@Param('id') id: string) {
-    return this.mediaService.getDownloadUrl(id);
+  @ApiOperation({
+    summary:
+      'Generate a pre-signed URL. For EVIDENCE media, disposition=attachment requires custody (403 otherwise).',
+  })
+  getDownloadUrl(
+    @Param('id') id: string,
+    @CurrentUser() user: JwtPayload,
+    @Headers('authorization') authHeader: string,
+    @Query('disposition') disposition?: string,
+    @Query('context') context?: string,
+  ) {
+    return this.mediaService.getDownloadUrl(id, {
+      disposition,
+      context,
+      actor: user,
+      authHeader,
+    });
   }
 
   @Get(':id')

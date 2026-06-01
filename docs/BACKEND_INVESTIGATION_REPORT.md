@@ -280,12 +280,14 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 - `findOne(id, actor, trackView = true)`: appends a `chain_of_custody` row with `transferReason = "Viewed by user"`, mutates `currentCustodianId = actor.sub`, then returns the reloaded entity (with `custodyChain`). **This is the "view = take responsibility" side effect.** The COC insert and the `currentCustodianId` update run in a **single DB transaction** — either both persist or neither does (see Fix 001). **Idempotent self-view:** if the actor is *already* the current custodian (e.g. a UI refresh), no new row is appended and no update runs; a view by a *different* user still records.
 - `update`: no business-status guard — patches the fields provided. **Note:** unlike `Case`, there is no "archived guard" — an archived evidence is still mutable via `PUT /evidence/:id`.
 - `transferCustody`: appends a chain-of-custody row (`previousCustodianId = current`, `newCustodianId = dto.newCustodianId`); sets `evidenceStatus = TRANSFERRED`; publishes `evidence.transferred`.
+- `takeCustody` (Feature 007): **self-assign** custody to the caller. Atomic (one transaction) and **idempotent** — if the caller already holds custody, no chain row is written and no event fires. Otherwise inserts a chain row with the **fixed reason `"Accessed evidence file"`** (`previousCustodianId = current`, `newCustodianId = transferredByUserId = caller.sub`), sets `currentCustodianId = caller.sub`, and publishes `evidence.custody.accessed` post-commit. Does **not** change `evidenceStatus`. Allowed for **all three roles** (the caller assigns only to themselves).
+- `getCustodian` (Feature 007): side-effect-free `{ evidenceId, currentCustodianId }`. Exists so media-service can gate evidence-file downloads without invoking `findOne` (which would transfer custody).
 - `archive`: `409 Conflict` if already archived; sets `archived = true`, `archivedAt = now`, `evidenceStatus = ARCHIVED`; publishes `evidence.archived`.
 - `getCustodyChain`: returns the chain ordered `createdAt ASC`.
 
 **Who can CRUD:**
 - Create / Update / Transfer: ADMIN, DETECTIVE.
-- Read: ADMIN, DETECTIVE, ANALYST.
+- Read / Take-custody (self) / Read-custodian: ADMIN, DETECTIVE, ANALYST.
 - Archive: ADMIN only.
 
 ---
@@ -413,6 +415,8 @@ Append-only by convention — no update or delete code paths reference this enti
 | `evidence.added`            | `EVIDENCE_ADDED`               |
 | `evidence.transferred`      | `EVIDENCE_CUSTODY_TRANSFERRED` |
 | `evidence.archived`         | `EVIDENCE_ARCHIVED`            |
+| `evidence.custody.accessed` | `EVIDENCE_CUSTODY_ACCESSED`    |
+| `evidence.media.viewed`     | `EVIDENCE_MEDIA_VIEWED`        |
 | `task.assigned`             | `TASK_ASSIGNED`                |
 | `task.completed`            | `TASK_COMPLETED`               |
 | `task.overdue`              | `TASK_OVERDUE`                 |
@@ -507,6 +511,7 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 | `GET /evidence` (list/get/coc)      |        |   X   |     X     |    X    |
 | `PUT /evidence/:id`                 |        |   X   |     X     |         |
 | `PATCH /evidence/:id/transfer-custody` |     |   X   |     X     |         |
+| `PATCH /evidence/:id/take-custody`, `GET /evidence/:id/custodian` | | X | X | X |
 | `PATCH /evidence/:id/archive`       |        |   X   |           |         |
 | `POST /tasks`                       |        |   X   |     X     |         |
 | `GET /tasks`, `/tasks/:id`          |        |   X   |     X     |    X    |
@@ -1041,6 +1046,18 @@ All routes require `Authorization: Bearer ...`.
 - **Side effects:** appends a `chain_of_custody` row; sets `evidenceStatus = TRANSFERRED`. Publishes `evidence.transferred`.
 - **Response 200:** the updated `Evidence`.
 
+#### `PATCH /evidence/:id/take-custody` (Feature 007)
+- **Roles:** **all three** (ADMIN, DETECTIVE, ANALYST). Unlike `transfer-custody`, the caller assigns custody to **themselves** — the deliberate act required before downloading evidence files.
+- **Body (`TakeCustodyDto`):** empty, or `{ reason?: string }` (optional note; the chain reason is fixed by the backend).
+- **Side effects:** if the caller is not already custodian, appends a `chain_of_custody` row with `transferReason = "Accessed evidence file"` (`previousCustodianId = current`, `newCustodianId = transferredByUserId = caller.sub`) and sets `currentCustodianId = caller.sub`, then publishes `evidence.custody.accessed`. **Idempotent:** already-custodian → no row, no event. `evidenceStatus` is left unchanged.
+- **Response 200:** the updated `Evidence` (with `custodyChain`).
+- **Errors:** `404` if not found.
+
+#### `GET /evidence/:id/custodian` (Feature 007)
+- **Roles:** all three.
+- **Response 200:** `{ "evidenceId": "...", "currentCustodianId": "..." | null }`. **No side effect** — used internally by media-service to gate downloads.
+- **Errors:** `404` if not found.
+
 #### `GET /evidence/:id/chain-of-custody`
 - **Roles:** all three.
 - **Response 200:** `ChainOfCustody[]` ordered `createdAt ASC`. **No view side-effect** here.
@@ -1153,12 +1170,18 @@ The media service has the most distinct field-naming conventions because the upl
 - **Response 200:** `Media[]` (raw array, no envelope).
 
 #### `GET /media/:id/download-url`
-- **Roles:** all three.
+- **Roles:** all three (plus the custody gate below for evidence files).
+- **Query (Feature 007):**
+  - `disposition` — `inline` | `attachment` (default `attachment`; any unknown value is treated as `attachment`, i.e. fail-safe to the gated path). Sets the presigned URL's `Content-Disposition` (with the `originalFilename`).
+  - `context` — optional. `viewer` flags a deliberate evidence preview for audit; thumbnails omit it.
+- **Custody enforcement (EVIDENCE only):** when the media's `entityType = EVIDENCE` and `disposition = attachment`, the caller **must be the evidence's `currentCustodianId`** (looked up via evidence-service `GET /evidence/:id/custodian`). If not → **`403 Forbidden`** *"You must hold custody of this evidence to download its files"*. Non-EVIDENCE media is never gated.
+- **View logging (EVIDENCE only):** when `disposition = inline` **and** `context = viewer`, publishes `evidence.media.viewed` (audit `EVIDENCE_MEDIA_VIEWED`) — `inline` without `context=viewer` (e.g. gallery thumbnails) does **not** log, to avoid audit noise.
 - **Response 200:**
   ```json
   { "url": "https://aegiscase-media.s3.us-east-1.amazonaws.com/...?X-Amz-...", "expiresIn": 3600 }
   ```
   The URL expires after 1 hour.
+- **Errors:** `403` (non-custodian downloading an evidence file); `503` ("Could not verify evidence custody") if the custody lookup fails (fail-closed); `404` (media not found).
 
 #### `GET /media/:id`
 - **Roles:** all three.
@@ -1367,6 +1390,8 @@ The audit-service is the only consumer in V1. Every domain service publishes eve
 | `evidence.added`            | `evidence.added`           | evidence-service| `case_id`, `evidence_type`, `custodian_user_id`                                      |
 | `evidence.transferred`      | `evidence.transferred`     | evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `transfer_reason?`           |
 | `evidence.archived`         | `evidence.archived`        | evidence-service| `case_id`, `archived_by_user_id`                                                     |
+| `evidence.custody.accessed` | `evidence.custody.accessed`| evidence-service| `case_id`, `previous_custodian_id`, `new_custodian_id`, `reason`                     |
+| `evidence.media.viewed`     | `evidence.media.viewed`    | media-service   | `evidence_id`, `media_id`                                                            |
 | `task.assigned`             | `task.assigned`            | task-service    | `case_id`, `assigned_to_user_id`, `assigned_by_user_id`, `due_date?`                 |
 | `task.completed`            | `task.completed`           | task-service    | `case_id`, `completed_by_user_id`                                                    |
 | `task.overdue`              | `task.overdue`             | task-service    | `case_id`, `assigned_to_user_id`, `due_date`                                         |
@@ -1570,6 +1595,8 @@ The matrix below restates the role-by-action grid from Section 2.1 with the prec
 | Read evidence detail (mutates COC) | `GET /evidence/:id`                             |   ✓   |     ✓     |    ✓     |
 | Update evidence                  | `PUT /evidence/:id`                               |   ✓   |     ✓     |    —     |
 | Transfer custody                 | `PATCH /evidence/:id/transfer-custody`            |   ✓   |     ✓     |    —     |
+| Take custody (self)              | `PATCH /evidence/:id/take-custody`                |   ✓   |     ✓     |    ✓     |
+| Read custodian                   | `GET /evidence/:id/custodian`                     |   ✓   |     ✓     |    ✓     |
 | Archive evidence                 | `PATCH /evidence/:id/archive`                     |   ✓   |     —     |    —     |
 | Create task                      | `POST /tasks`                                     |   ✓   |     ✓     |    —     |
 | Read tasks                       | `GET /tasks{, /:id}`                              |   ✓   |     ✓     |    ✓     |
@@ -1578,10 +1605,13 @@ The matrix below restates the role-by-action grid from Section 2.1 with the prec
 | Cancel task                      | `PATCH /tasks/:id/status` (CANCELLED)             |   ✓   |     ✓     |    —     |
 | Upload media                     | `POST /media`                                     |   ✓   |     ✓     |    ✓     |
 | Read media                       | `GET /media{, /:id, /entity/.../..., /:id/download-url}` | ✓ |   ✓     |    ✓     |
+| Download EVIDENCE media file     | `GET /media/:id/download-url?disposition=attachment` | custodian only (any role) ‡ |||
 | Soft-delete media                | `DELETE /media/:id`                               |   ✓   |     —     |    —     |
 | Read audit                       | `GET /audit*`                                     |   ✓   |     ✓     |    ✓     |
 
 † Analyst restriction: only for tasks where `assignedToUserId === actor.sub`.
+
+‡ For media attached to an `EVIDENCE`, an `attachment` download requires the caller to be the evidence's current custodian (any role) — otherwise `403`. Non-custodians must `PATCH /evidence/:id/take-custody` first. Inline previews are not gated. (Feature 007)
 
 ---
 

@@ -6,6 +6,7 @@ import {
   INVESTIGATION_EXCHANGE,
   getRmqUrl,
   MediaUploadedEvent,
+  EvidenceMediaViewedEvent,
 } from '@aegiscase/events';
 
 @Injectable()
@@ -39,6 +40,22 @@ export class EventPublisherService implements OnModuleInit, OnModuleDestroy {
     this.publish(EventPatterns.MEDIA_UPLOADED, {
       event_id: uuidv4(),
       event_type: 'media.uploaded',
+      occurred_at: new Date(),
+      actor_user_id: actorUserId,
+      entity_type: 'Media',
+      entity_id: mediaId,
+      payload,
+    });
+  }
+
+  publishEvidenceMediaViewed(
+    actorUserId: string,
+    mediaId: string,
+    payload: EvidenceMediaViewedEvent['payload'],
+  ): void {
+    this.publish(EventPatterns.EVIDENCE_MEDIA_VIEWED, {
+      event_id: uuidv4(),
+      event_type: 'evidence.media.viewed',
       occurred_at: new Date(),
       actor_user_id: actorUserId,
       entity_type: 'Media',
