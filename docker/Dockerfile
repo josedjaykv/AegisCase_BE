@@ -33,4 +33,7 @@ COPY --from=builder /app/dist ./dist
 
 EXPOSE 3000
 
-CMD node dist/apps/${SERVICE}/main
+# El build del monorepo anida la salida en dist/apps/<svc>/apps/<svc>/src/main.js
+# (tsc preserva la estructura de carpetas por las libs compartidas). Resolvemos
+# la ruta real de main.js en tiempo de arranque en lugar de asumirla.
+CMD node "$(find dist/apps/${SERVICE} -name main.js | head -1)"

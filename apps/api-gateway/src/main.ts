@@ -18,8 +18,17 @@ async function bootstrap() {
 
   app.useGlobalFilters(new AllExceptionsFilter());
 
+  // CORS_ORIGIN may be '*' (allow all), a single origin, or a comma-separated
+  // list (e.g. the dockerized FE on :4200 and a local Vite dev server on :5173).
+  // CORS_ORIGIN: '*'/unset => reflect any origin (origin:true, the most reliable
+  // "allow all"); otherwise a comma-separated allow-list (dockerized FE :4200,
+  // local Vite dev :5173, ...).
+  const corsOrigin = process.env.CORS_ORIGIN?.trim();
   app.enableCors({
-    origin: process.env.CORS_ORIGIN || '*',
+    origin:
+      !corsOrigin || corsOrigin === '*'
+        ? true
+        : corsOrigin.split(',').map((o) => o.trim()).filter(Boolean),
     methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
     allowedHeaders: ['Content-Type', 'Authorization'],
   });

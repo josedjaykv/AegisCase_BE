@@ -34,7 +34,63 @@ backend/
 └── nest-cli.json
 ```
 
-## Prerequisites
+## Run the full stack (Backend + Frontend) with Docker
+
+The single `docker-compose.yml` brings up **everything**: infrastructure (PostgreSQL, RabbitMQ,
+Keycloak), the 9 backend services, and the frontend. Only Docker is required.
+
+> 🇪🇸 Guía paso a paso en español: [`COMO-EJECUTAR.md`](COMO-EJECUTAR.md)
+
+**1. Clone both repos as sibling folders** (the compose builds the FE from `../AegisCase_FE`):
+
+```
+parent/
+├── AegisCase_BE/   ← this repo (has docker-compose.yml)
+└── AegisCase_FE/   ← frontend repo (branch with its Dockerfile)
+```
+
+**2. From inside `AegisCase_BE`, build and start:**
+
+```bash
+# Build sequentially to avoid npm network timeouts (first image caches the
+# shared npm layer, the rest reuse it). First run takes a few minutes.
+COMPOSE_PARALLEL_LIMIT=1 docker compose build
+
+# Start the whole system
+docker compose up -d
+
+# Check status (all Up; postgres/rabbitmq/keycloak Healthy)
+docker compose ps
+```
+
+No `.env` file is needed — the compose ships working defaults for local development.
+
+**3. Open the app** at **http://localhost:4200** and log in.
+
+| URL | What |
+|---|---|
+| http://localhost:4200 | Frontend (the app) |
+| http://localhost:3000 | API Gateway |
+| http://localhost:3000/api/docs | API docs (Swagger) |
+| http://localhost:15672 | RabbitMQ console (`aegiscase` / `aegiscase`) |
+| http://localhost:8080 | Keycloak console (`admin` / `admin`) |
+
+**Seeded test users:**
+
+| Role | Email | Password |
+|---|---|---|
+| Admin | `admin@aegiscase.com` | `Admin1234!` |
+| Detective | `detective@aegiscase.com` | `Detective1234!` |
+| Analyst | `analyst@aegiscase.com` | `Analyst1234!` |
+
+**Stop everything:** `docker compose down` (add `-v` to also wipe data).
+
+> Note: file uploads use AWS S3 — without `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` that single
+> feature is unavailable, but the rest of the system works normally.
+
+---
+
+## Prerequisites (local development without Docker)
 
 - Node.js 22+
 - npm 10+

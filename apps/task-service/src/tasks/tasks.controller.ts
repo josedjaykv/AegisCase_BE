@@ -64,11 +64,7 @@ export class TasksController {
   @Put(':id')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
   @ApiOperation({ summary: 'Update task (assignee, ADMIN or DETECTIVE)' })
-  update(
-    @Param('id') id: string,
-    @Body() dto: UpdateTaskDto,
-    @CurrentUser() user: JwtPayload,
-  ) {
+  update(@Param('id') id: string, @Body() dto: UpdateTaskDto, @CurrentUser() user: JwtPayload) {
     return this.tasksService.update(id, dto, user);
   }
 
