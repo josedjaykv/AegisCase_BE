@@ -84,21 +84,17 @@ ssh -i /ruta/a/tu-key.pem ubuntu@<IP-PUBLICA>
 
 El repo trae un script que instala Docker, clona ambos repos, detecta la IP pública y levanta todo.
 
+El script ya viene con tus repos configurados
+(`josedjaykv/AegisCase_BE` y `josedjaykv/AegisCase_FE`, rama `main`).
+
 ```bash
-# 1) Descargá el script (o copialo) y editá las URLs de tus repos
-sudo mkdir -p /opt && cd /opt
+# 1) Instalá git y cloná el backend (trae el script)
 sudo apt-get update -y && sudo apt-get install -y git
+sudo mkdir -p /opt && cd /opt
+sudo git clone https://github.com/josedjaykv/AegisCase_BE.git
 
-# 2) Cloná SOLO el backend para tener el script a mano
-sudo git clone https://github.com/USUARIO/AegisCase_BE.git
-cd AegisCase_BE/deploy
-
-# 3) Editá las variables al inicio de aws-setup.sh:
-#      BE_REPO, FE_REPO, FE_BRANCH (la rama del FE con el Dockerfile, ej. phase_10)
-sudo nano aws-setup.sh
-
-# 4) Ejecutalo
-sudo bash aws-setup.sh
+# 2) Ejecutá el script (instala todo y levanta el sistema)
+sudo bash AegisCase_BE/deploy/aws-setup.sh
 ```
 
 El script:
@@ -109,13 +105,13 @@ El script:
 
 La **primera vez tarda varios minutos** (compila ~10 imágenes + Keycloak importa el realm).
 
-> **Repos privados:** si tus repos no son públicos, usá una URL con token en `BE_REPO`/`FE_REPO`:
-> `https://<TOKEN>@github.com/USUARIO/AegisCase_FE.git` (creá un *Personal Access Token* en GitHub).
+> **Si los repos fueran privados:** pasá una URL con token, p. ej.
+> `sudo BE_REPO="https://<TOKEN>@github.com/josedjaykv/AegisCase_BE.git" FE_REPO="https://<TOKEN>@github.com/josedjaykv/AegisCase_FE.git" bash AegisCase_BE/deploy/aws-setup.sh`
 
 ### Alternativa: como "User data" al crear la EC2
-Podés pegar el contenido de `deploy/aws-setup.sh` (con `BE_REPO`/`FE_REPO`/`FE_BRANCH` completados)
-en el campo **User data** del paso de creación. La instancia se autoconfigura al primer arranque
-(esperá ~10-15 min y entrá directo al paso 6).
+Podés pegar el contenido de [`deploy/aws-setup.sh`](deploy/aws-setup.sh) en el campo **User data**
+del paso de creación. La instancia se autoconfigura al primer arranque (esperá ~10-15 min y entrá
+directo al paso 6). No necesitás editar nada: los repos ya están puestos.
 
 ---
 

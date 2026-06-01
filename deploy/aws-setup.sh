@@ -12,7 +12,8 @@
 #   A) Como "User data" al crear la EC2  -> pegá este contenido en el campo User data.
 #   B) Manual tras conectarte por SSH     -> sudo bash aws-setup.sh
 #
-# IMPORTANTE: completá BE_REPO, FE_REPO y FE_BRANCH antes de usarlo.
+# Los repos ya vienen configurados (josedjaykv/AegisCase_BE y _FE, rama main).
+# Si son privados, sobreescribí BE_REPO/FE_REPO con una URL que incluya un token.
 # ---------------------------------------------------------------------------------
 
 set -euo pipefail
@@ -20,9 +21,9 @@ set -euo pipefail
 # ─── CONFIGURACIÓN (EDITAR) ──────────────────────────────────────────────────────
 # URLs git de los repos. Si son privados, usá un token:
 #   https://<TOKEN>@github.com/usuario/AegisCase_BE.git
-BE_REPO="${BE_REPO:-https://github.com/USUARIO/AegisCase_BE.git}"
-FE_REPO="${FE_REPO:-https://github.com/USUARIO/AegisCase_FE.git}"
-FE_BRANCH="${FE_BRANCH:-main}"          # rama del FE que tiene el Dockerfile (ej. phase_10)
+BE_REPO="${BE_REPO:-https://github.com/josedjaykv/AegisCase_BE.git}"
+FE_REPO="${FE_REPO:-https://github.com/josedjaykv/AegisCase_FE.git}"
+FE_BRANCH="${FE_BRANCH:-main}"          # rama del FE que tiene el Dockerfile
 BE_BRANCH="${BE_BRANCH:-main}"
 
 WORKDIR="${WORKDIR:-/opt/aegiscase}"    # dónde se clonan los repos
