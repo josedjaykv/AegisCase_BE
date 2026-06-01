@@ -359,6 +359,33 @@ describe('EvidenceService', () => {
     });
   });
 
+  describe('getSummary', () => {
+    it('returns the evidence with no side effects and no custodyChain relation', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce({
+        id: 'ev-1',
+        caseId: 'case-1',
+        title: 'Knife',
+        currentCustodianId: 'user-2',
+      } as any);
+
+      const result: any = await service.getSummary('ev-1');
+
+      // No relations requested (same shape as a list row), no writes/events.
+      expect(evidenceRepo.findOne).toHaveBeenCalledWith({ where: { id: 'ev-1' } });
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'ev-1', caseId: 'case-1', title: 'Knife' }),
+      );
+      expect(evidenceRepo.save).not.toHaveBeenCalled();
+      expect(manager.insert).not.toHaveBeenCalled();
+      expect(events.publishEvidenceUpdated).not.toHaveBeenCalled();
+    });
+
+    it('throws NotFoundException when missing', async () => {
+      evidenceRepo.findOne.mockResolvedValueOnce(null);
+      await expect(service.getSummary('ev-1')).rejects.toBeInstanceOf(NotFoundException);
+    });
+  });
+
   describe('getCustodian', () => {
     it('returns the current custodian without side effects', async () => {
       evidenceRepo.findOne.mockResolvedValueOnce({

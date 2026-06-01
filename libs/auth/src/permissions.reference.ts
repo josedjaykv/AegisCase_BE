@@ -43,6 +43,7 @@ export const PERMISSION_MATRIX = {
     transferCustody: [UserRole.ADMIN, UserRole.DETECTIVE],
     takeCustody:     [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST], // self-assign (Feature 007)
     readCustodian:   [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST], // side-effect-free lookup
+    readSummary:     [UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST], // read-only, no view (Feature 011)
   },
 
   // ── Tasks ────────────────────────────────────────────────────────────────

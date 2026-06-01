@@ -282,6 +282,7 @@ All UUID primary keys are generated via `PrimaryGeneratedColumn('uuid')`. The ba
 - `update`: **custody gate (Feature 010)** — `403 Forbidden` unless `currentCustodianId === actor.sub` (all roles, incl. ADMIN). Then patches the fields provided and publishes `evidence.updated` with only the changed fields. No business-status guard otherwise. **Note:** unlike `Case`, there is no "archived guard" — an archived evidence held in custody is still mutable via `PUT /evidence/:id`.
 - `transferCustody`: appends a chain-of-custody row (`previousCustodianId = current`, `newCustodianId = dto.newCustodianId`); sets `evidenceStatus = TRANSFERRED`; publishes `evidence.transferred`.
 - `takeCustody` (Feature 007): **self-assign** custody to the caller. Atomic (one transaction) and **idempotent** — if the caller already holds custody, no chain row is written and no event fires. Otherwise inserts a chain row with the **fixed reason `"Accessed evidence file"`** (`previousCustodianId = current`, `newCustodianId = transferredByUserId = caller.sub`), sets `currentCustodianId = caller.sub`, and publishes `evidence.custody.accessed` post-commit. Does **not** change `evidenceStatus`. Allowed for **all three roles** (the caller assigns only to themselves).
+- `getSummary` (Feature 011): side-effect-free single-evidence read returning the same shape as a `findAll` list row (no `custodyChain`). No view recorded, no custodian change. Backs `GET /evidence/:id/summary` for reload/deep-link.
 - `getCustodian` (Feature 007): side-effect-free `{ evidenceId, currentCustodianId }`. Exists so media-service can gate evidence-file downloads without invoking `findOne` (which would transfer custody).
 - `archive`: `409 Conflict` if already archived; sets `archived = true`, `archivedAt = now`, `evidenceStatus = ARCHIVED`; publishes `evidence.archived`.
 - `getCustodyChain`: returns the chain ordered `createdAt ASC`.
@@ -510,7 +511,7 @@ The resulting `request.user` object exposed inside controllers via `@CurrentUser
 | `PATCH /involved-persons/:id/cases/:caseId` |  |   X   |     X     |         |
 | `DELETE /involved-persons/:id/cases/:caseId` | |   X   |     X     |         |
 | `POST /evidence`                    |        |   X   |     X     |         |
-| `GET /evidence` (list/get/coc)      |        |   X   |     X     |    X    |
+| `GET /evidence` (list/get/coc/summary) |     |   X   |     X     |    X    |
 | `PUT /evidence/:id` (custodian only ‖) |     |   X   |     X     |         |
 | `PATCH /evidence/:id/transfer-custody` |     |   X   |     X     |         |
 | `PATCH /evidence/:id/take-custody`, `GET /evidence/:id/custodian` | | X | X | X |
@@ -1035,6 +1036,12 @@ All routes require `Authorization: Bearer ...`.
 - **Response 200:** the `Evidence` entity with `custodyChain: ChainOfCustody[]` populated (and containing the just-inserted "Viewed by user" row, when one was recorded).
 - The frontend should display a warning dialog before calling this endpoint.
 
+#### `GET /evidence/:id/summary` (Feature 011)
+- **Roles:** all three.
+- **Read-only — NO side effect:** unlike `GET /evidence/:id`, this records **no** chain-of-custody view and does **not** change `currentCustodianId`. Used by the FE on a reload / deep-link of `/evidence/:id` (and `/edit`) when no warm list cache exists, so the mutating GET is never auto-called.
+- **Response 200:** the `Evidence` entity with the **same fields as a list row** (no `custodyChain` relation).
+- **Errors:** `404` if not found.
+
 #### `PUT /evidence/:id`
 - **Roles:** ADMIN, DETECTIVE.
 - **Custody gate (Feature 010):** the caller **must be the current `currentCustodianId`** — otherwise **`403 Forbidden`** *"You must hold custody of this evidence to edit it"*. Applies to **all roles incl. ADMIN**; a non-custodian must `PATCH /evidence/:id/take-custody` first (which is audited). Same policy as downloading evidence files (Feature 007).
@@ -1317,6 +1324,7 @@ Sample audit row:
 
 5. **Inspect the chain (read-only)**
    `GET /evidence/:id/chain-of-custody` — chronological order, no side effects. Prefer this over `GET /evidence/:id` when no view-acknowledgement is desired.
+   For the evidence fields themselves without the view side effect (reload / deep-link), use `GET /evidence/:id/summary` (Feature 011).
 
 6. **(ADMIN) Archive**
    `PATCH /evidence/:id/archive` — sets `archived=true`, `evidenceStatus=ARCHIVED`, publishes `evidence.archived`.
@@ -1599,7 +1607,7 @@ The matrix below restates the role-by-action grid from Section 2.1 with the prec
 | Update involved person           | `PUT /involved-persons/:id`                       |   ✓   |     ✓     |    —     |
 | Link involved → case             | `POST /involved-persons/:id/cases/:caseId`        |   ✓   |     ✓     |    —     |
 | Register evidence                | `POST /evidence`                                  |   ✓   |     ✓     |    —     |
-| Read evidence (no side effect)   | `GET /evidence`, `GET /evidence/:id/chain-of-custody` | ✓ |     ✓     |    ✓     |
+| Read evidence (no side effect)   | `GET /evidence`, `GET /evidence/:id/summary`, `GET /evidence/:id/chain-of-custody` | ✓ |     ✓     |    ✓     |
 | Read evidence detail (mutates COC) | `GET /evidence/:id`                             |   ✓   |     ✓     |    ✓     |
 | Update evidence (custodian only) | `PUT /evidence/:id`                               |   ✓‖  |     ✓‖    |    —     |
 | Transfer custody                 | `PATCH /evidence/:id/transfer-custody`            |   ✓   |     ✓     |    —     |
@@ -1790,7 +1798,7 @@ REGISTERED ─► IN_CUSTODY ─► TRANSFERRED ─► ARCHIVED (terminal)
 
 ### 14.3 Conditional / side-effect operations
 
-- `GET /evidence/:id` writes (COC). Use `GET /evidence/:id/chain-of-custody` for a read-only inspection.
+- `GET /evidence/:id` writes (COC). Use `GET /evidence/:id/summary` (entity fields) or `GET /evidence/:id/chain-of-custody` (history) for a read-only inspection.
 - `GET /tasks*` writes (overdue sweep). Acceptable to call but be aware overdue events fire on first detection.
 - `POST /media` deletes the S3 object if DB save fails (compensating action).
 

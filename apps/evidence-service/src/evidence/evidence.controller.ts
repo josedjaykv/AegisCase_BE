@@ -93,6 +93,15 @@ export class EvidenceController {
     return this.evidenceService.takeCustody(id, user);
   }
 
+  @Get(':id/summary')
+  @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
+  @ApiOperation({
+    summary: 'Read-only evidence summary (no custody side effect) — for reload/deep-link',
+  })
+  getSummary(@Param('id') id: string) {
+    return this.evidenceService.getSummary(id);
+  }
+
   @Get(':id/custodian')
   @Roles(UserRole.ADMIN, UserRole.DETECTIVE, UserRole.ANALYST)
   @ApiOperation({ summary: 'Get the current custodian (side-effect-free; for download gating)' })

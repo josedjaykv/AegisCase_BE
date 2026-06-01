@@ -22,3 +22,4 @@ implementación, las pruebas y la documentación relacionada.
 | [007](007-evidence-file-custody-gating.md) | Custodia para descargar archivos de evidencia (ver = log, descargar = custodia) | `evidence-service`, `media-service`, `audit-service` | Implementado | 2026-05-30 |
 | [009](009-evidence-title.md) | Campo `title` en evidencia | `evidence-service` | Implementado | 2026-05-30 |
 | [010](010-evidence-edit-requires-custody.md) | Editar evidencia exige custodia (+ evento `evidence.updated`) | `evidence-service`, `audit-service` | Implementado | 2026-05-31 |
+| [011](011-evidence-readonly-summary.md) | Summary de evidencia de solo lectura (reload / deep-link) | `evidence-service` | Implementado | 2026-05-31 |
