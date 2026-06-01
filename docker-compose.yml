@@ -1,5 +1,3 @@
-version: '3.9'
-
 # ─── Networks ──────────────────────────────────────────────────────────────────
 networks:
   aegiscase-net:
@@ -76,8 +74,10 @@ services:
       - ./docker/keycloak/realm-export.json:/opt/keycloak/data/import/realm-export.json:ro
     networks:
       - aegiscase-net
+    # La imagen oficial de Keycloak NO incluye curl/wget, pero sí bash. Verificamos
+    # /health/ready abriendo un socket TCP con la built-in /dev/tcp de bash.
     healthcheck:
-      test: ['CMD-SHELL', 'curl -sf http://localhost:8080/health/ready || exit 1']
+      test: ['CMD', 'bash', '-c', 'exec 3<>/dev/tcp/localhost/8080; printf "GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n" >&3; cat <&3 | grep -q "200 OK"']
       interval: 20s
       timeout: 10s
       retries: 10
@@ -98,12 +98,27 @@ services:
       PORT: 3000
       JWT_SECRET: ${JWT_SECRET:-changeme-in-production}
       CORS_ORIGIN: ${CORS_ORIGIN:-*}
+      # Token validation (JWKS): internal Keycloak hostname, kept identical across
+      # all services so the JWT issuer matches (the browser never calls Keycloak).
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
+      # Internal routing targets (Docker DNS names), used by the proxy.
+      AUTH_SERVICE_URL: http://auth-service:3001
+      USER_SERVICE_URL: http://user-service:3002
+      CASE_SERVICE_URL: http://case-service:3003
+      INVOLVED_SERVICE_URL: http://involved-service:3004
+      EVIDENCE_SERVICE_URL: http://evidence-service:3005
+      TASK_SERVICE_URL: http://task-service:3006
+      MEDIA_SERVICE_URL: http://media-service:3007
+      AUDIT_SERVICE_URL: http://audit-service:3008
     ports:
       - '3000:3000'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -120,12 +135,17 @@ services:
       NODE_ENV: ${NODE_ENV:-development}
       PORT: 3001
       JWT_SECRET: ${JWT_SECRET:-changeme-in-production}
-      KEYCLOAK_URL: ${KEYCLOAK_URL:-http://localhost:8080}
+      # Internal Docker hostname (not localhost): auth-service talks to Keycloak
+      # container-to-container, and the tokens it issues carry this as the issuer.
+      KEYCLOAK_URL: http://keycloak:8080
       KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
       KEYCLOAK_CLIENT_ID: ${KEYCLOAK_CLIENT_ID:-aegiscase-backend}
-      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-}
+      KEYCLOAK_CLIENT_SECRET: ${KEYCLOAK_CLIENT_SECRET:-aegiscase-backend-secret}
     ports:
       - '3001:3001'
+    depends_on:
+      keycloak:
+        condition: service_healthy
     networks:
       - aegiscase-net
 
@@ -147,12 +167,17 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: user_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3002:3002'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -175,12 +200,17 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: case_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3003:3003'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -203,12 +233,17 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: involved_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3004:3004'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -231,12 +266,17 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: evidence_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3005:3005'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -259,12 +299,17 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: task_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3006:3006'
     depends_on:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -287,6 +332,9 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: media_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
       AWS_REGION: ${AWS_REGION:-us-east-1}
       AWS_S3_BUCKET: ${AWS_S3_BUCKET:-aegiscase-media}
       AWS_ACCESS_KEY_ID: ${AWS_ACCESS_KEY_ID:-}
@@ -297,6 +345,8 @@ services:
       postgres:
         condition: service_healthy
       rabbitmq:
+        condition: service_healthy
+      keycloak:
         condition: service_healthy
     networks:
       - aegiscase-net
@@ -319,6 +369,9 @@ services:
       DB_NAME: ${DB_NAME:-aegiscase}
       DB_SCHEMA: audit_db
       RABBITMQ_URL: amqp://${RABBITMQ_USER:-aegiscase}:${RABBITMQ_PASSWORD:-aegiscase}@rabbitmq:5672/${RABBITMQ_VHOST:-aegiscase}
+      # JWT validation against Keycloak (internal hostname; matches the token issuer)
+      KEYCLOAK_URL: http://keycloak:8080
+      KEYCLOAK_REALM: ${KEYCLOAK_REALM:-aegiscase}
     ports:
       - '3008:3008'
     depends_on:
@@ -326,5 +379,28 @@ services:
         condition: service_healthy
       rabbitmq:
         condition: service_healthy
+      keycloak:
+        condition: service_healthy
+    networks:
+      - aegiscase-net
+
+  # ── Frontend ─────────────────────────────────────────────────────────────────
+
+  frontend:
+    # The FE repo is a SIBLING folder of this one on the same machine.
+    # It builds a static React+Vite SPA and serves it with nginx (port 80).
+    build:
+      context: ../AegisCase_FE
+      dockerfile: Dockerfile
+      args:
+        # VITE_* vars are INLINED AT BUILD TIME. This is the PUBLIC gateway URL
+        # the browser hits on the host — NOT an internal Docker hostname.
+        VITE_API_BASE_URL: ${VITE_API_BASE_URL:-http://localhost:3000}
+    container_name: aegiscase-frontend
+    restart: unless-stopped
+    ports:
+      - '${FRONTEND_PORT:-4200}:80'
+    depends_on:
+      - api-gateway
     networks:
       - aegiscase-net
