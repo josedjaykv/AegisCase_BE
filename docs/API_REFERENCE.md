@@ -177,10 +177,12 @@ Base path: `/tasks`
 | Method | Path                              | Roles                                | Purpose                       |
 |--------|-----------------------------------|--------------------------------------|-------------------------------|
 | POST   | `/tasks`                          | ADMIN, DETECTIVE                     | Create task                   |
-| GET    | `/tasks?assignedToUserId=<uuid>`  | ADMIN, DETECTIVE, ANALYST            | List tasks                    |
+| GET    | `/tasks?caseId=<uuid>&assignedToUserId=<uuid>` | ADMIN, DETECTIVE, ANALYST       | List tasks                    |
 | GET    | `/tasks/:id`                      | ADMIN, DETECTIVE, ANALYST            | Get task                      |
 | PUT    | `/tasks/:id`                      | ADMIN, DETECTIVE, ANALYST (assignee) | Update task                   |
 | PATCH  | `/tasks/:id/status`               | ADMIN, DETECTIVE, ANALYST (assignee) | Change status / complete      |
+
+**Filters:** `GET /tasks` accepts optional `caseId` (UUID) and `assignedToUserId` (UUID), combined with **AND**, plus `page`/`limit`. An unknown-but-valid `caseId` returns an empty list (no `404`). Use `caseId` for the case-scoped task board.
 
 **Business rules:** tasks may only be assigned to `DETECTIVE` or `ANALYST`. A `COMPLETED` task cannot be reopened in V1.
 

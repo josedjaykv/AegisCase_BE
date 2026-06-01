@@ -1084,8 +1084,10 @@ All routes require `Authorization: Bearer ...`.
 
 #### `GET /tasks`
 - **Roles:** all three.
-- **Query:** `page`, `limit`, `assignedToUserId?` (UUID).
+- **Query:** `page`, `limit`, `assignedToUserId?` (UUID), `caseId?` (UUID).
+- **Filters:** `assignedToUserId` and `caseId` are both optional and combine with **AND**. An unknown-but-valid `caseId` returns an empty `data` (never `404`). Used by the case-scoped Kanban board to fetch all of a case's tasks across every status (Feature 005).
 - **Side effect:** runs `markOverdueTasks()` (see Section 3.8) before returning, so the list may contain newly-flipped `OVERDUE` rows on each call.
+- **Response 200:** `{ data, total, page, limit }` (shape unchanged).
 
 #### `GET /tasks/:id`
 - **Roles:** all three. Also runs `markOverdueTasks()` as a side effect.

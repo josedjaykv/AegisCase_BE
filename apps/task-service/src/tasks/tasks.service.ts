@@ -42,11 +42,18 @@ export class TasksService {
     return saved;
   }
 
-  async findAll(pagination: PaginationDto, assignedToUserId?: string): Promise<[Task[], number]> {
+  async findAll(
+    pagination: PaginationDto,
+    assignedToUserId?: string,
+    caseId?: string,
+  ): Promise<[Task[], number]> {
     const { page = 1, limit = 20 } = pagination;
     await this.markOverdueTasks();
 
-    const where = assignedToUserId ? { assignedToUserId } : {};
+    const where = {
+      ...(assignedToUserId ? { assignedToUserId } : {}),
+      ...(caseId ? { caseId } : {}),
+    };
     return this.repo.findAndCount({
       where,
       order: { createdAt: 'DESC' },

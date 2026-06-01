@@ -223,6 +223,53 @@ describe('TasksService', () => {
     });
   });
 
+  describe('findAll filters', () => {
+    it('filters by caseId when provided', async () => {
+      repo.findAndCount.mockResolvedValueOnce([[{ id: 't-1' } as any], 1]);
+
+      await service.findAll({ page: 1, limit: 20 }, undefined, 'case-1');
+
+      expect(repo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: { caseId: 'case-1' } }),
+      );
+    });
+
+    it('combines caseId and assignedToUserId (AND)', async () => {
+      repo.findAndCount.mockResolvedValueOnce([[], 0]);
+
+      await service.findAll({ page: 1, limit: 20 }, 'user-9', 'case-1');
+
+      expect(repo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({
+          where: { assignedToUserId: 'user-9', caseId: 'case-1' },
+        }),
+      );
+    });
+
+    it('applies no filter when neither caseId nor assignedToUserId is given', async () => {
+      repo.findAndCount.mockResolvedValueOnce([[], 0]);
+
+      await service.findAll({ page: 1, limit: 20 });
+
+      expect(repo.findAndCount).toHaveBeenCalledWith(
+        expect.objectContaining({ where: {} }),
+      );
+    });
+
+    it('runs the overdue sweep before querying', async () => {
+      repo.find.mockResolvedValueOnce([
+        { id: 't-9', caseId: 'c9', dueDate: '2026-05-01', assignedToUserId: 'u9' },
+      ] as any);
+      repo.update.mockResolvedValueOnce({ affected: 1 } as any);
+      repo.findAndCount.mockResolvedValueOnce([[], 0]);
+
+      await service.findAll({ page: 1, limit: 20 }, undefined, 'case-1');
+
+      expect(repo.update).toHaveBeenCalled();
+      expect(events.publishTaskOverdue).toHaveBeenCalledTimes(1);
+    });
+  });
+
   describe('overdue auto-marking', () => {
     it('marks overdue candidates and publishes TaskOverdue per task', async () => {
       const overdue = [
