@@ -201,9 +201,10 @@ Base path: `/media`
 | DELETE | `/media/:id`                                    | ADMIN                       | Soft-delete media                |
 
 Upload uses `multipart/form-data` with fields:
-- `file` — binary
+- `file` — binary. The part's `filename` is stored verbatim as `originalFilename` (supports a user-chosen display name).
 - `entity_type` — `CASE | TASK | EVIDENCE | INVOLVED_PERSON | USER`
 - `entity_id` — UUID (string for `USER`)
+- `description` — optional free-text (≤1000 chars), persisted and returned on all media reads (Feature 006).
 
 Hard cap: 100 MB per file (multer level). Stricter MIME/size rules may apply per `entity_type` — see `docs/MEDIA.md`.
 

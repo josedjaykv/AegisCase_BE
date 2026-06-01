@@ -24,6 +24,9 @@ export class Media {
   @Column({ name: 'original_filename', nullable: true })
   originalFilename: string | null;
 
+  @Column({ type: 'text', nullable: true })
+  description: string | null;
+
   @Column({ name: 'file_size', type: 'integer', nullable: true })
   fileSize: number | null;
 

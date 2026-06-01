@@ -6,5 +6,6 @@ export interface MediaUploadedEvent extends BaseEvent {
     url: string;
     entity_type: string;
     entity_id: string;
+    description?: string;
   };
 }

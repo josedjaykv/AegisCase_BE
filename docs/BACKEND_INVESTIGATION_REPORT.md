@@ -362,7 +362,8 @@ Append-only by convention — no update or delete code paths reference this enti
 | `entityType`        | `entityType`         | `entity_type`          | enum MediaEntityType |    No    | `CASE \| TASK \| EVIDENCE \| INVOLVED_PERSON \| USER` |
 | `entityId`          | `entityId`           | `entity_id`            | string               |    No    | UUID for most, free string for `USER`             |
 | `uploadedByUserId`  | `uploadedByUserId`   | `uploaded_by_user_id`  | string (UUID)        |    No    | From JWT `sub`                                    |
-| `originalFilename`  | `originalFilename`   | `original_filename`    | string               |   Yes    |                                                   |
+| `originalFilename`  | `originalFilename`   | `original_filename`    | string               |   Yes    | Stored verbatim from the multipart part filename (`file.originalname`) — supports user rename |
+| `description`       | `description`        | `description`          | text                 |   Yes    | Optional free-text (≤1000 chars), default `NULL` (Feature 006) |
 | `fileSize`          | `fileSize`           | `file_size`            | integer              |   Yes    | Bytes                                             |
 | `mimeType`          | `mimeType`           | `mime_type`            | string               |   Yes    | Declared MIME                                     |
 | `s3Key`             | `s3Key`              | `s3_key`               | string (≤1000)       |    No    | `<folder>/<entityId>/<uuid>.<ext>`                |
@@ -1121,9 +1122,10 @@ The media service has the most distinct field-naming conventions because the upl
 
   | Field         | Type   | Required | Notes                                                                |
   |---------------|--------|:--------:|----------------------------------------------------------------------|
-  | `file`        | binary |   Yes    | Up to 100 MB hard cap (multer), and ≤ `MAX_FILE_SIZE` (default 50 MB) |
+  | `file`        | binary |   Yes    | Up to 100 MB hard cap (multer), and ≤ `MAX_FILE_SIZE` (default 50 MB). The part's `filename` is stored verbatim as `originalFilename` (so the FE can send a user-chosen display name). |
   | `entity_type` | string |   Yes    | `CASE \| TASK \| EVIDENCE \| INVOLVED_PERSON \| USER`                  |
   | `entity_id`   | string |   Yes    | UUID for most, free string for `USER`                                |
+  | `description` | string |    No    | Optional free-text (≤1000 chars), persisted to `media.description` and returned on all reads. Stripped by the `ValidationPipe` allowlist if absent — never required (Feature 006). |
 
 - **Validation (in order):**
   1. `file` present.
@@ -1131,16 +1133,17 @@ The media service has the most distinct field-naming conventions because the upl
   3. `file-type` library reads magic bytes:
      - If detected: must equal `file.mimetype` **and** be in the allowlist.
      - If not detected (no magic bytes): `file.mimetype` must equal `text/plain`.
-- **Response 201:** the `Media` entity. The S3 key follows `<folder>/<entity_id>/<uuid>.<ext>` where `<folder>` is one of `cases | evidence | tasks | involved-persons | users`.
+- **Response 201:** the `Media` entity (including `description`, `null` when not sent). The S3 key follows `<folder>/<entity_id>/<uuid>.<ext>` where `<folder>` is one of `cases | evidence | tasks | involved-persons | users`. Note the `<ext>` is derived from the **real MIME** (magic bytes), not the editable filename.
 - **Side effects:** if S3 upload succeeds but DB save fails, the S3 object is deleted (compensating action). Publishes `media.uploaded`.
 - **Errors:** `400` ("No file provided", "File exceeds maximum size of XXMB", "File content (X) does not match declared type (Y)", "File type X is not allowed", "Cannot verify file type. Declare content as text/plain..."); `503 Service Unavailable` ("File storage service is unavailable") on S3 failure.
 - **Example:**
   ```bash
   curl -X POST http://localhost:3000/media \
        -H 'Authorization: Bearer <token>' \
-       -F 'file=@/path/to/photo.jpg' \
+       -F 'file=@/path/to/photo.jpg;filename=Front building camera.jpg' \
        -F 'entity_type=EVIDENCE' \
-       -F 'entity_id=550e8400-e29b-41d4-a716-446655440000'
+       -F 'entity_id=550e8400-e29b-41d4-a716-446655440000' \
+       -F 'description=Video showing a clip from the front building camera'
   ```
 
 #### `GET /media/entity/:entityType/:entityId`
